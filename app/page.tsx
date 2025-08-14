@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useAction } from "convex/react";
@@ -8,7 +8,15 @@ import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 
 export default function Home() {
+  const user = useQuery(api.chat.getUser);
   const sendMessage = useAction(api.chat.basicChat);
+  const threads = useQuery(
+    api.chat.getThreads,
+    user
+      ? { userId: user._id, paginationOpts: { numItems: 10, cursor: null } }
+      : "skip"
+  );
+  console.log(threads);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [isSending, setIsSending] = useState(false);
@@ -19,7 +27,7 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setIsSending(true);
     try {
-      const reply = await sendMessage({ message: input });
+      const reply = await sendMessage({ message: input, userId: user?._id ?? "" });
       setMessages((prev) => [...prev, { role: "assistant", content: reply }] );
       setInput("");
     } finally {
@@ -35,6 +43,14 @@ export default function Home() {
         <SignOutButton />
       </header>
       <main className="p-8 flex flex-col gap-8 mx-auto max-w-2xl w-full">
+        <div className="flex flex-col gap-4">
+          {(threads ?? []).map((t) => (
+            <div key={t._id} className="flex flex-row justify-between items-center">
+              <div>{t._id ?? "Untitled"}</div>
+              <button className="bg-red-500 text-white rounded-md px-2 py-1 cursor-pointer">x</button>
+            </div>
+          ))}
+        </div>
         {/* chat interface */}
         <div className="flex flex-col gap-4 bg-slate-200 dark:bg-slate-800 p-4 rounded-md">
           <div className="flex flex-col gap-3 max-h-[50vh] overflow-auto">
