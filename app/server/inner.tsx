@@ -1,4 +1,4 @@
-"use client";
+/*"use client";
 
 import { Preloaded, useMutation, usePreloadedQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -28,4 +28,4 @@ export default function Home({
       </button>
     </>
   );
-}
+}*/

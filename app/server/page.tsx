@@ -1,11 +1,11 @@
-import Home from "./inner";
+/*import Home from "./inner";
 import { preloadQuery, preloadedQueryResult } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
 export default async function ServerPage() {
-  const preloaded = await preloadQuery(api.myFunctions.listNumbers, {
-    count: 3,
-  });
+  // const preloaded = await preloadQuery(api.myFunctions.listNumbers, {
+  //   count: 3,
+  // });
 
   const data = preloadedQueryResult(preloaded);
 
@@ -21,4 +21,4 @@ export default async function ServerPage() {
       <Home preloaded={preloaded} />
     </main>
   );
-}
+}*/

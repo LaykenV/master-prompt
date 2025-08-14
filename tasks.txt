@@ -1,0 +1,14 @@
+clean up boilerplate
+simple chat interface + ai chat working with single model
+select multiple models and do workflow 
+have each step of workflow return a text to show in ui
+build ui with elite model selector and look
+
+
+
+
+rate limiting?
+tokens?
+polar?
+upload files and img?
+img gen?
