@@ -29,9 +29,12 @@ import {
   Plus, 
   X, 
   User,
-  Sparkles
+  Sparkles,
+  Settings
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useRouter } from "next/navigation";
 
 export default function ChatLayout({
   children,
@@ -40,6 +43,8 @@ export default function ChatLayout({
 }) {
   const pathname = usePathname();
   const { isAuthenticated } = useConvexAuth();
+  const router = useRouter();
+  const { signOut } = useAuthActions();
   const user = useQuery(api.chat.getUser);
   const deleteThread = useAction(api.chat.deleteThread);
   const threads = useQuery(
@@ -130,9 +135,26 @@ export default function ChatLayout({
             <SidebarFooter>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="w-full">
-                    <User className="h-4 w-4" />
-                    <span className="truncate">{user.name || user.email || "User"}</span>
+                  <SidebarMenuButton asChild>
+                    <Link 
+                      href={`/settings${activeThreadId ? `?returnChat=${activeThreadId}` : ''}`}
+                      className="w-full justify-start gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    className="w-full justify-between" 
+                    onClick={() => void signOut().then(() => router.push("/"))}
+                  >
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span className="truncate">{user.name || user.email || "User"}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
