@@ -126,4 +126,12 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--border) / 0.8);
   }
+
+  /* Icon button utility class */
+  .icon-button {
+    @apply flex h-8 w-full items-center justify-start gap-2 rounded-md p-2 text-sm outline-hidden transition-colors;
+    @apply hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+    @apply focus-visible:ring-2 focus-visible:ring-sidebar-ring;
+    @apply group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8;
+  }
 }

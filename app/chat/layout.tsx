@@ -35,6 +35,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function ChatLayout({
   children,
@@ -134,6 +135,9 @@ export default function ChatLayout({
             <Separator />
             <SidebarFooter>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <ThemeToggle />
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link 

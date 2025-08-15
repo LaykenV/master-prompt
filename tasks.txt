@@ -1,10 +1,11 @@
 //clean up boilerplate
 //simple chat interface + ai chat working with single model
 //implement model reccomendations and ui and re read docs
-set up auth and routing and settings and dark mode
-text handling and scrolling
+//set up auth and routing and settings 
+dark mode
 select multiple models and do workflow 
 have each step of workflow return a text to show in ui
+text handling and scrolling
 build ui with elite model selector and look
 
 
