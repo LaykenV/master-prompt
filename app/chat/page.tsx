@@ -17,9 +17,11 @@ export default function NewChatPage() {
     if (!content || isCreating || !user?._id) return;
     setIsCreating(true);
     try {
-      const threadId = await createThread({ userId: user._id, title: content.slice(0, 80) });
-      const initial = encodeURIComponent(content);
-      router.push(`/chat/${threadId}?initial=${initial}`);
+      const threadId = await createThread({ 
+        title: content.slice(0, 80),
+        initialPrompt: content 
+      });
+      router.push(`/chat/${threadId}`);
     } finally {
       setIsCreating(false);
     }

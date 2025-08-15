@@ -19,9 +19,7 @@ export default function ChatLayout({
   const deleteThread = useAction(api.chat.deleteThread);
   const threads = useQuery(
     api.chat.getThreads,
-    user
-      ? { userId: user._id, paginationOpts: { numItems: 50, cursor: null } }
-      : "skip"
+    { paginationOpts: { numItems: 50, cursor: null } }
   );
 
   const activeThreadId = useMemo(() => {
