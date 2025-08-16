@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { toUIMessages, useThreadMessages, optimisticallySendMessage, useSmoothText, UIMessage } from "@convex-dev/agent/react";
 import { ModelPicker } from "@/components/ModelPicker";
@@ -19,10 +19,20 @@ export default function ThreadPage() {
   const [selectedModel, setSelectedModel] = useState<string>();
   const [isSending, setIsSending] = useState(false);
 
+  // Get messages to check if streaming has started
+  const messages = useThreadMessages(
+    api.chat.listThreadMessages,
+    { threadId },
+    { initialNumItems: 10, stream: true }
+  );
+
+  // No explicit pending state; loader is derived from message list
+
   const handleSend = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || isSending || !user?._id) return;
     setIsSending(true);
+    
     try {
       await sendMessage({ 
         threadId, 
@@ -57,7 +67,7 @@ export default function ThreadPage() {
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <Messages threadId={threadId} />
+        <Messages messages={messages} />
       </div>
       <div className="border-t bg-background p-4">
         <div className="mx-auto max-w-4xl flex gap-2">
@@ -86,13 +96,7 @@ export default function ThreadPage() {
 }
 
 
-function Messages({ threadId }: { threadId: string }) {
-  const messages = useThreadMessages(
-    api.chat.listThreadMessages,
-    { threadId },
-    { initialNumItems: 10, stream: true }
-  );
-
+function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages> }) {
   if (messages.isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -113,12 +117,36 @@ function Messages({ threadId }: { threadId: string }) {
   }
 
   const uiMessages = toUIMessages(messages.results ?? []);
+
+  // Show a derived loader bubble if the latest message is from the user
+  // and there is no assistant message after it (streaming or complete).
+  const lastUserIndex = (() => {
+    for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
+      if (uiMessages[i].role === "user") return i;
+    }
+    return -1;
+  })();
+  const hasAssistantAfterLastUser = lastUserIndex !== -1 && uiMessages.some((m, idx) => idx > lastUserIndex && m.role === "assistant");
+  const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
+  
   return (
     <div className="h-full overflow-auto p-4 custom-scrollbar">
       <div className="mx-auto max-w-4xl space-y-4">
         {uiMessages.map((m) => (
           <MessageBubble key={m.key} message={m} />
         ))}
+        {shouldShowPendingAssistant && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg p-4 bg-card border mr-12">
+              <div className="text-xs opacity-60 mb-1">Assistant</div>
+              <div className="mt-2 flex items-center gap-1">
+                <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
+                <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
+                <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

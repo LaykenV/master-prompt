@@ -190,6 +190,7 @@ export const sendMessage = mutation({
     },
     returns: v.null(),
     handler: async (ctx, { threadId, prompt, modelId }) => {
+        await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
         
