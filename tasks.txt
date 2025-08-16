@@ -2,7 +2,7 @@
 //simple chat interface + ai chat working with single model
 //implement model reccomendations and ui and re read docs
 //set up auth and routing and settings 
-dark mode
+//dark mode
 select multiple models and do workflow 
 have each step of workflow return a text to show in ui
 text handling and scrolling

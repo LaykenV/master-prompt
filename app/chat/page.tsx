@@ -4,12 +4,14 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ModelPicker } from "@/components/ModelPicker";
 
 export default function NewChatPage() {
   const router = useRouter();
   const user = useQuery(api.chat.getUser);
   const createThread = useAction(api.chat.createThread);
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
   const [isCreating, setIsCreating] = useState(false);
 
   const onStart = async () => {
@@ -19,13 +21,16 @@ export default function NewChatPage() {
     try {
       const threadId = await createThread({ 
         title: content.slice(0, 80),
-        initialPrompt: content 
+        initialPrompt: content,
+        modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
       });
       router.push(`/chat/${threadId}`);
     } finally {
       setIsCreating(false);
     }
   };
+
+
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-8">
@@ -46,6 +51,14 @@ export default function NewChatPage() {
         )}
 
         <div className="space-y-4">
+          {/* Model Selector */}
+          <div className="flex items-center justify-center">
+            <ModelPicker 
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+            />
+          </div>
+
           <div className="flex gap-2">
             <input
               className="flex-1 rounded-lg border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"

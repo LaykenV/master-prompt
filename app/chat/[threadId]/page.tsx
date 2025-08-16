@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { toUIMessages, useThreadMessages, optimisticallySendMessage, useSmoothText, UIMessage } from "@convex-dev/agent/react";
+import { ModelPicker } from "@/components/ModelPicker";
 
 export default function ThreadPage() {
   const params = useParams();
@@ -15,6 +16,7 @@ export default function ThreadPage() {
     optimisticallySendMessage(api.chat.listThreadMessages)
   );
   const [input, setInput] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string>();
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = useCallback(async (text?: string) => {
@@ -22,18 +24,38 @@ export default function ThreadPage() {
     if (!content || isSending || !user?._id) return;
     setIsSending(true);
     try {
-      await sendMessage({ threadId, prompt: content });
+      await sendMessage({ 
+        threadId, 
+        prompt: content,
+        modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro" | undefined
+      });
       if (!text) setInput("");
+      // Reset selected model after sending (it's now persisted to thread)
+      setSelectedModel(undefined);
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, user?._id, threadId, sendMessage]);
+  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel]);
 
 
 
 
   return (
     <div className="flex h-full flex-col">
+      {/* Header with model picker */}
+      <div className="border-b bg-background p-4">
+        <div className="mx-auto max-w-4xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold">Chat</h1>
+          </div>
+          <ModelPicker 
+            threadId={threadId} 
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+          />
+        </div>
+      </div>
+      
       <div className="flex-1 overflow-hidden">
         <Messages threadId={threadId} />
       </div>

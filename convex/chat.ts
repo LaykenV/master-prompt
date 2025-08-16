@@ -1,5 +1,5 @@
-import { agent } from "./agent";
-import { action, query, internalAction, mutation, internalMutation, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
+import { masterPromptAgent, createAgentWithModel, AVAILABLE_MODELS, type ModelId } from "./agent";
+import { action, query, internalAction, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
@@ -21,20 +21,47 @@ export const getUser = query({
     },
   });
 
+// Get available models for the UI
+export const getAvailableModels = query({
+    args: {},
+    returns: v.array(v.object({
+        id: v.string(),
+        displayName: v.string(),
+        provider: v.string(),
+    })),
+    handler: async () => {
+        return Object.entries(AVAILABLE_MODELS).map(([id, config]) => ({
+            id,
+            displayName: config.displayName,
+            provider: config.provider,
+        }));
+    },
+});
+
 export const createThread = action({
     args: {
         title: v.optional(v.string()),
         initialPrompt: v.optional(v.string()),
+        modelId: v.optional(v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        )),
     },
     returns: v.string(),
     handler: async (ctx, args) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+        
+        // Create thread with model in summary for easy identification
+        const modelId = args.modelId || "gpt-4o-mini";
         const { _id: threadId } = await ctx.runMutation(
             components.agent.threads.createThread,
             {
                 title: args.title,
                 userId: userId,
+                summary: `Model: ${AVAILABLE_MODELS[modelId as ModelId].displayName}`,
             }
         );
         
@@ -44,6 +71,7 @@ export const createThread = action({
                 threadId,
                 userId: userId,
                 prompt: args.initialPrompt,
+                modelId: modelId as ModelId,
             });
         }
         
@@ -81,10 +109,43 @@ export const deleteThread = action({
     returns: v.null(),
     handler: async (ctx, args) => {
         await authorizeThreadAccess(ctx, args.threadId);
-        await agent.deleteThreadAsync(ctx, { threadId: args.threadId });
+        await masterPromptAgent.deleteThreadAsync(ctx, { threadId: args.threadId });
         return null;
     },
 });
+
+
+
+// Function to get thread model preference
+export const getThreadModel = query({
+    args: { threadId: v.string() },
+    returns: v.union(
+        v.literal("gpt-4o-mini"),
+        v.literal("gpt-4o"),
+        v.literal("gemini-2.5-flash"),
+        v.literal("gemini-2.5-pro")
+    ),
+    handler: async (ctx, { threadId }) => {
+        await authorizeThreadAccess(ctx, threadId);
+        const thread = await getThreadMetadata(ctx, components.agent, { threadId });
+        const summary = thread.summary;
+        
+        // Extract model from summary or default to gpt-4o-mini
+        if (summary?.includes("Model: ")) {
+            const modelName = summary.split("Model: ")[1];
+            // Find the model ID by display name
+            for (const [modelId, config] of Object.entries(AVAILABLE_MODELS)) {
+                if (config.displayName === modelName) {
+                    return modelId as ModelId;
+                }
+            }
+        }
+        
+        return "gpt-4o-mini"; // default
+    },
+});
+
+
 
 // Save the initial message when creating a thread and generate a response
 export const saveInitialMessage = internalMutation({
@@ -92,18 +153,24 @@ export const saveInitialMessage = internalMutation({
         threadId: v.string(),
         userId: v.id("users"),
         prompt: v.string(),
+        modelId: v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        ),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, userId, prompt }) => {
+    handler: async (ctx, { threadId, userId, prompt, modelId }) => {
         const { messageId } = await saveMessage(ctx, components.agent, {
             threadId,
             userId,
             prompt,
-
         });
         await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
             threadId,
             promptMessageId: messageId,
+            modelId,
         });
         return null;
     },
@@ -114,33 +181,93 @@ export const sendMessage = mutation({
     args: {
         threadId: v.string(),
         prompt: v.string(),
+        modelId: v.optional(v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        )),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, prompt }) => {
+    handler: async (ctx, { threadId, prompt, modelId }) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+        
+        // If a new model is specified, update the thread's model preference
+        if (modelId) {
+            await ctx.runMutation(components.agent.threads.updateThread, {
+                threadId,
+                patch: {
+                    summary: `Model: ${AVAILABLE_MODELS[modelId as ModelId].displayName}`,
+                }
+            });
+        }
+        
+        // Get the model to use (provided or current thread model)
+        const activeModelId = modelId || await ctx.runQuery(internal.chat.getThreadModelInternal, { threadId });
+        
         const { messageId } = await saveMessage(ctx, components.agent, {
             threadId,
             userId,
             prompt,
-
         });
 
         await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
             threadId,
             promptMessageId: messageId,
+            modelId: activeModelId,
         });
         return null;
     },
 });
 
+// Internal query to get thread model (no auth needed for internal calls)
+export const getThreadModelInternal = internalQuery({
+    args: { threadId: v.string() },
+    returns: v.union(
+        v.literal("gpt-4o-mini"),
+        v.literal("gpt-4o"),
+        v.literal("gemini-2.5-flash"),
+        v.literal("gemini-2.5-pro")
+    ),
+    handler: async (ctx, { threadId }) => {
+        const thread = await getThreadMetadata(ctx, components.agent, { threadId });
+        const summary = thread.summary;
+        
+        // Extract model from summary or default to gpt-4o-mini
+        if (summary?.includes("Model: ")) {
+            const modelName = summary.split("Model: ")[1];
+            // Find the model ID by display name
+            for (const [modelId, config] of Object.entries(AVAILABLE_MODELS)) {
+                if (config.displayName === modelName) {
+                    return modelId as ModelId;
+                }
+            }
+        }
+        
+        return "gpt-4o-mini"; // default
+    },
+});
+
 // Internal action to stream the agent's response and save deltas.
 export const generateResponseStreamingAsync = internalAction({
-    args: { threadId: v.string(), promptMessageId: v.string() },
+    args: { 
+        threadId: v.string(), 
+        promptMessageId: v.string(),
+        modelId: v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        ),
+    },
     returns: v.null(),
-    handler: async (ctx, { threadId, promptMessageId }) => {
+    handler: async (ctx, { threadId, promptMessageId, modelId }) => {
         try {
-            const { thread } = await agent.continueThread(ctx, { threadId });
+            // Create an agent instance with the specific model for this thread
+            const threadAgent = createAgentWithModel(modelId as ModelId);
+            
+            const { thread } = await threadAgent.continueThread(ctx, { threadId });
             const result = await thread.streamText({ promptMessageId }, { saveStreamDeltas: {chunking: "line", throttleMs: 500 } });
             await result.consumeStream();
             return null;
