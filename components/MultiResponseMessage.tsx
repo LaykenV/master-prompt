@@ -17,13 +17,13 @@ interface MultiResponseMessageProps {
 
 export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiResponseMessageProps) {
   const multiModelRun = useQuery(api.chat.getMultiModelRun, { masterMessageId });
+  const availableModels = useQuery(api.chat.getAvailableModels);
   const [showAllResponses, setShowAllResponses] = useState(false);
   
   if (!multiModelRun) {
     return null;
   }
 
-  const availableModels = useQuery(api.chat.getAvailableModels);
   
   const getModelInfo = (modelId: string) => {
     return availableModels?.find(m => m.id === modelId);
@@ -85,7 +85,7 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
               <TabsTrigger value="master" className="text-xs">
                 Master Response
               </TabsTrigger>
-              {multiModelRun.secondaryRuns.slice(0, 2).map((run, index) => (
+              {multiModelRun.secondaryRuns.slice(0, 2).map((run) => (
                 <TabsTrigger key={run.threadId} value={run.threadId} className="text-xs">
                   {getModelInfo(run.modelId)?.displayName}
                 </TabsTrigger>

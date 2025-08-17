@@ -7,6 +7,7 @@ import { internalMutation, internalAction } from "./_generated/server";
 
 // Initialize the workflow manager
 // Type assertion needed due to API signature mismatch between workflow versions
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const workflow = new WorkflowManager(components.workflow as any);
 
 // Define the multi-model generation workflow

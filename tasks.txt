@@ -4,9 +4,17 @@
 //set up auth and routing and settings 
 //dark mode
 select multiple models and do workflow 
+threads table 
+make responses anon to final prompt
+need to stream secondaries
+need to save final response user message id and add to excluded ids on table
+show message by message id not thread id if master prompt
+
 have each step of workflow return a text to show in ui
 text handling and scrolling
 build ui with elite model selector and look
+
+
 
 
 
