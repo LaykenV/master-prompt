@@ -18,7 +18,7 @@ interface MultiResponseMessageProps {
 export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiResponseMessageProps) {
   const multiModelRun = useQuery(api.chat.getMultiModelRun, { masterMessageId });
   const availableModels = useQuery(api.chat.getAvailableModels);
-  const [showAllResponses, setShowAllResponses] = useState(false);
+  const [showAllResponses, setShowAllResponses] = useState(true);
   
   if (!multiModelRun) {
     return null;

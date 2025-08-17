@@ -5,26 +5,53 @@ import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModelPicker } from "@/components/ModelPicker";
+import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 
 export default function NewChatPage() {
   const router = useRouter();
   const user = useQuery(api.chat.getUser);
   const createThread = useAction(api.chat.createThread);
+  const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
   const [isCreating, setIsCreating] = useState(false);
+  const [multiModelMode, setMultiModelMode] = useState(false);
+  const [multiModelSelection, setMultiModelSelection] = useState<{
+    master: string;
+    secondary: string[];
+  }>({ master: "gpt-4o-mini", secondary: [] });
 
   const onStart = async () => {
     const content = input.trim();
     if (!content || isCreating || !user?._id) return;
     setIsCreating(true);
     try {
-      const threadId = await createThread({ 
-        title: content.slice(0, 80),
-        initialPrompt: content,
-        modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
-      });
-      router.push(`/chat/${threadId}`);
+      if (multiModelMode && multiModelSelection.secondary.length > 0) {
+        // Multi-model generation: Create thread without initial prompt, then start multi-model workflow
+        const threadId = await createThread({ 
+          title: content.slice(0, 80),
+          modelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
+        });
+        
+        // Start multi-model generation
+        await startMultiModelGeneration({
+          threadId,
+          prompt: content,
+          masterModelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro",
+          secondaryModelIds: multiModelSelection.secondary as ("gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro")[],
+        });
+        
+        router.push(`/chat/${threadId}`);
+      } else {
+        // Single model generation (original behavior)
+        const threadId = await createThread({ 
+          title: content.slice(0, 80),
+          initialPrompt: content,
+          modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
+        });
+        router.push(`/chat/${threadId}`);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -51,11 +78,22 @@ export default function NewChatPage() {
         )}
 
         <div className="space-y-4">
-          {/* Model Selector */}
-          <div className="flex items-center justify-center">
+          {/* Multi-Model Toggle and Model Selector */}
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              variant={multiModelMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMultiModelMode(!multiModelMode)}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Multi-Model
+            </Button>
             <ModelPicker 
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
+              multiModelMode={multiModelMode}
+              onMultiModelChange={setMultiModelSelection}
             />
           </div>
 
@@ -76,7 +114,12 @@ export default function NewChatPage() {
               disabled={isCreating || !input.trim() || !user}
               className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
-              {isCreating ? "Creating..." : "Start Chat"}
+              {isCreating 
+                ? "Creating..." 
+                : multiModelMode && multiModelSelection.secondary.length > 0 
+                  ? `Start with ${1 + multiModelSelection.secondary.length} Models`
+                  : "Start Chat"
+              }
             </button>
           </div>
         </div>
