@@ -162,7 +162,7 @@ export const generateModelResponse = internalAction({
   handler: async (ctx, { threadId, modelId, prompt, userId }) => {
     try {
       // For ALL models (including master), save the initial prompt message to their sub-thread
-      await saveMessage(ctx, components.agent, {
+      const { messageId } = await saveMessage(ctx, components.agent, {
         threadId,
         userId,
         prompt,
@@ -172,7 +172,8 @@ export const generateModelResponse = internalAction({
       const agent = createAgentWithModel(modelId as ModelId);
       
       const { thread } = await agent.continueThread(ctx, { threadId });
-      const result = await thread.generateText({ prompt });
+      const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
+      await result.consumeStream();
       
       return result.text;
     } catch (error) {
