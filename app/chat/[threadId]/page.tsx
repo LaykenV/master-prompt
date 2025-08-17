@@ -1,11 +1,14 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { toUIMessages, useThreadMessages, optimisticallySendMessage, useSmoothText, UIMessage } from "@convex-dev/agent/react";
 import { ModelPicker } from "@/components/ModelPicker";
+import { MultiResponseMessage } from "@/components/MultiResponseMessage";
+import { Button } from "@/components/ui/button";
+import { Users, Send } from "lucide-react";
 
 export default function ThreadPage() {
   const params = useParams();
@@ -18,6 +21,14 @@ export default function ThreadPage() {
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<string>();
   const [isSending, setIsSending] = useState(false);
+  const [multiModelMode, setMultiModelMode] = useState(false);
+  const [multiModelSelection, setMultiModelSelection] = useState<{
+    master: string;
+    secondary: string[];
+  }>({ master: "gpt-4o-mini", secondary: [] });
+
+  // Actions and mutations
+  const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
 
   // Get messages to check if streaming has started
   const messages = useThreadMessages(
@@ -34,18 +45,30 @@ export default function ThreadPage() {
     setIsSending(true);
     
     try {
-      await sendMessage({ 
-        threadId, 
-        prompt: content,
-        modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro" | undefined
-      });
+      if (multiModelMode && multiModelSelection.secondary.length > 0) {
+        // Multi-model generation
+        await startMultiModelGeneration({
+          threadId,
+          prompt: content,
+          masterModelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro",
+          secondaryModelIds: multiModelSelection.secondary as ("gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro")[],
+        });
+      } else {
+        // Single model generation (original behavior)
+        await sendMessage({ 
+          threadId, 
+          prompt: content,
+          modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro" | undefined
+        });
+      }
+      
       if (!text) setInput("");
       // Reset selected model after sending (it's now persisted to thread)
       setSelectedModel(undefined);
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel]);
+  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelMode, multiModelSelection, startMultiModelGeneration]);
 
 
 
@@ -58,11 +81,25 @@ export default function ThreadPage() {
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">Chat</h1>
           </div>
-          <ModelPicker 
-            threadId={threadId} 
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-          />
+          <div className="flex items-center gap-3">
+            <Button
+              variant={multiModelMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMultiModelMode(!multiModelMode)}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Multi-Model
+            </Button>
+            <ModelPicker 
+              threadId={threadId} 
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              multiModelMode={multiModelMode}
+
+              onMultiModelChange={setMultiModelSelection}
+            />
+          </div>
         </div>
       </div>
       
@@ -82,13 +119,19 @@ export default function ThreadPage() {
             }}
             disabled={isSending || !user}
           />
-          <button
+          <Button
             onClick={() => void handleSend()}
             disabled={isSending || !input.trim() || !user}
-            className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+            className="px-6 py-3"
           >
-            {isSending ? "Sending..." : "Send"}
-          </button>
+            <Send className="h-4 w-4 mr-2" />
+            {isSending 
+              ? "Sending..." 
+              : multiModelMode && multiModelSelection.secondary.length > 0 
+                ? `Send to ${1 + multiModelSelection.secondary.length} Models`
+                : "Send"
+            }
+          </Button>
         </div>
       </div>
     </div>
@@ -132,9 +175,19 @@ function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages>
   return (
     <div className="h-full overflow-auto p-4 custom-scrollbar">
       <div className="mx-auto max-w-4xl space-y-4">
-        {uiMessages.map((m) => (
-          <MessageBubble key={m.key} message={m} />
-        ))}
+        {uiMessages.map((m, index) => {
+          // Check if this is a user message that might be part of a multi-model run
+          if (m.role === "user") {
+            return (
+              <MessageWithMultiModel 
+                key={m.key} 
+                message={m} 
+                messageId={messages.results?.[index]?._id}
+              />
+            );
+          }
+          return <MessageBubble key={m.key} message={m} />;
+        })}
         {shouldShowPendingAssistant && (
           <div className="flex justify-start">
             <div className="max-w-[80%] rounded-lg p-4 bg-card border mr-12">
@@ -150,6 +203,28 @@ function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages>
       </div>
     </div>
   );
+}
+
+function MessageWithMultiModel({ message, messageId }: { message: UIMessage; messageId?: string }) {
+  const multiModelRun = useQuery(
+    api.chat.getMultiModelRun, 
+    messageId ? { masterMessageId: messageId } : "skip"
+  );
+
+  // If this message is part of a multi-model run, show the multi-response component
+  if (multiModelRun) {
+    return (
+      <div className="space-y-4">
+        <MultiResponseMessage 
+          masterMessageId={messageId!} 
+          originalPrompt={message.content}
+        />
+      </div>
+    );
+  }
+
+  // Otherwise, show the regular message bubble
+  return <MessageBubble message={message} />;
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {

@@ -11,6 +11,7 @@ import {
     saveMessage,
     getThreadMetadata,
 } from "@convex-dev/agent";
+import { workflow } from "./workflows";
 
 export const getUser = query({
     args: {},
@@ -316,3 +317,111 @@ export async function authorizeThreadAccess(
       throw new Error("Unauthorized: user does not match thread user");
     }
   }
+
+// Multi-model generation functions
+
+// Start multi-model generation workflow
+export const startMultiModelGeneration = action({
+    args: {
+        threadId: v.string(),
+        prompt: v.string(),
+        masterModelId: v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        ),
+        secondaryModelIds: v.array(v.union(
+            v.literal("gpt-4o-mini"),
+            v.literal("gpt-4o"),
+            v.literal("gemini-2.5-flash"),
+            v.literal("gemini-2.5-pro")
+        )),
+    },
+    returns: v.string(), // Returns the workflow ID
+    handler: async (ctx, { threadId, prompt, masterModelId, secondaryModelIds }): Promise<string> => {
+        await authorizeThreadAccess(ctx, threadId);
+        const userId = await getAuthUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
+
+        // Save the user's initial message to the master thread
+        const { messageId } = await saveMessage(ctx, components.agent, {
+            threadId,
+            userId,
+            prompt,
+        });
+
+        // Start the multi-model generation workflow
+        const workflowId: string = await workflow.start(
+            ctx,
+            internal.workflows.multiModelGeneration,
+            {
+                masterThreadId: threadId,
+                masterMessageId: messageId,
+                prompt,
+                masterModelId,
+                secondaryModelIds,
+                userId,
+            }
+        );
+
+        return workflowId;
+    },
+});
+
+// Get multi-model run by master message ID
+export const getMultiModelRun = query({
+    args: {
+        masterMessageId: v.string(),
+    },
+    returns: v.union(
+        v.null(),
+        v.object({
+            _id: v.id("multiModelRuns"),
+            _creationTime: v.number(),
+            masterMessageId: v.string(),
+            masterThreadId: v.string(),
+            secondaryRuns: v.array(v.object({
+                modelId: v.union(
+                    v.literal("gpt-4o-mini"),
+                    v.literal("gpt-4o"),
+                    v.literal("gemini-2.5-flash"),
+                    v.literal("gemini-2.5-pro")
+                ),
+                threadId: v.string(),
+            })),
+        })
+    ),
+    handler: async (ctx, { masterMessageId }) => {
+        const run = await ctx.db
+            .query("multiModelRuns")
+            .withIndex("by_master_message", (q) => 
+                q.eq("masterMessageId", masterMessageId)
+            )
+            .unique();
+        
+        return run;
+    },
+});
+
+// List messages for a secondary thread (for multi-model display)
+export const listSecondaryThreadMessages = query({
+    args: {
+        threadId: v.string(),
+        paginationOpts: paginationOptsValidator,
+        streamArgs: vStreamArgs,
+    },
+    handler: async (ctx, { threadId, paginationOpts, streamArgs }) => {
+        // Note: We don't authorize access to secondary threads since they're temporary
+        // and used only for multi-model generation display
+        const paginated = await listMessages(ctx, components.agent, {
+            threadId,
+            paginationOpts,
+        });
+        const streams = await syncStreams(ctx, components.agent, {
+            threadId,
+            streamArgs,
+        });
+        return { ...paginated, streams };
+    },
+});
