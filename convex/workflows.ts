@@ -37,7 +37,6 @@ export const multiModelGeneration = workflow.define({
     const secondaryThreadCreationTasks = secondaryModelIds.map(modelId => 
       step.runMutation(internal.workflows.createSecondaryThread, {
         modelId,
-        userId,
       })
     );
     const secondaryThreadIds = await Promise.all(secondaryThreadCreationTasks);
@@ -109,14 +108,12 @@ export const createSecondaryThread = internalMutation({
       v.literal("gemini-2.5-flash"),
       v.literal("gemini-2.5-pro")
     ),
-    userId: v.id("users"),
   },
   returns: v.string(),
-  handler: async (ctx, { modelId, userId }) => {
+  handler: async (ctx, { modelId }) => {
     const { _id: threadId } = await ctx.runMutation(
       components.agent.threads.createThread,
       {
-        userId,
         title: `Multi-model response: ${AVAILABLE_MODELS[modelId as ModelId].displayName}`,
         summary: `Temporary thread for multi-model generation using ${AVAILABLE_MODELS[modelId as ModelId].displayName}`,
       }
