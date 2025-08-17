@@ -215,6 +215,7 @@ function MessageWithMultiModel({ message, messageId }: { message: UIMessage; mes
   if (multiModelRun) {
     return (
       <div className="space-y-4">
+        <MessageBubble message={message} />
         <MultiResponseMessage 
           masterMessageId={messageId!} 
           originalPrompt={message.content}

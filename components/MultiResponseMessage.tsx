@@ -50,7 +50,7 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
               Multi-Model Response
             </CardTitle>
             <Badge variant="secondary" className="text-xs">
-              {1 + multiModelRun.secondaryRuns.length} models
+              {multiModelRun.allRuns.length} models
             </Badge>
           </div>
           <Button
@@ -82,59 +82,37 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all" className="text-xs">All Responses</TabsTrigger>
-              <TabsTrigger value="master" className="text-xs">
-                Master Response
-              </TabsTrigger>
-              {multiModelRun.secondaryRuns.slice(0, 2).map((run) => (
+              {multiModelRun.allRuns.slice(0, 3).map((run) => (
                 <TabsTrigger key={run.threadId} value={run.threadId} className="text-xs">
-                  {getModelInfo(run.modelId)?.displayName}
+                  {getModelInfo(run.modelId)?.displayName || run.modelId}
+                  {run.isMaster && " (Master)"}
                 </TabsTrigger>
               ))}
             </TabsList>
             
             <TabsContent value="all" className="mt-4 space-y-4">
               <div className="grid gap-4">
-                {/* Master thread response - we need to get the master model ID from thread metadata */}
-                <ModelResponseCard
-                  threadId={multiModelRun.masterThreadId}
-                  modelId="master"
-                  modelInfo={undefined}
-                  isMaster={true}
-                  getProviderIcon={getProviderIcon}
-                />
-                
-                {/* Secondary responses */}
-                {multiModelRun.secondaryRuns.map((run) => (
+                {/* All sub-thread responses */}
+                {multiModelRun.allRuns.map((run) => (
                   <ModelResponseCard
                     key={run.threadId}
                     threadId={run.threadId}
                     modelId={run.modelId}
                     modelInfo={getModelInfo(run.modelId)}
-                    isMaster={false}
+                    isMaster={run.isMaster}
                     getProviderIcon={getProviderIcon}
                   />
                 ))}
               </div>
             </TabsContent>
             
-            <TabsContent value="master" className="mt-4">
-              <ModelResponseCard
-                threadId={multiModelRun.masterThreadId}
-                modelId="master"
-                modelInfo={undefined}
-                isMaster={true}
-                getProviderIcon={getProviderIcon}
-                expanded={true}
-              />
-            </TabsContent>
-            
-            {multiModelRun.secondaryRuns.map((run) => (
+            {multiModelRun.allRuns.map((run) => (
               <TabsContent key={run.threadId} value={run.threadId} className="mt-4">
                 <ModelResponseCard
                   threadId={run.threadId}
                   modelId={run.modelId}
                   modelInfo={getModelInfo(run.modelId)}
-                  isMaster={false}
+                  isMaster={run.isMaster}
                   getProviderIcon={getProviderIcon}
                   expanded={true}
                 />
@@ -176,7 +154,9 @@ function ModelResponseCard({
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <span className="text-sm">{getProviderIcon(modelInfo?.provider || "openai")}</span>
-            <span className="text-sm font-medium">{modelInfo?.displayName || (isMaster ? "Master Model" : modelId)}</span>
+            <span className="text-sm font-medium">
+              {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
+            </span>
             {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
           </div>
         </CardHeader>
@@ -200,7 +180,9 @@ function ModelResponseCard({
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <span className="text-sm">{getProviderIcon(modelInfo?.provider || "openai")}</span>
-            <span className="text-sm font-medium">{modelInfo?.displayName || (isMaster ? "Master Model" : modelId)}</span>
+            <span className="text-sm font-medium">
+              {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
+            </span>
             {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
           </div>
         </CardHeader>
@@ -222,7 +204,9 @@ function ModelResponseCard({
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{getProviderIcon(modelInfo?.provider || "")}</span>
-          <span className="text-sm font-medium">{modelInfo?.displayName || modelId}</span>
+          <span className="text-sm font-medium">
+            {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
+          </span>
           {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
           <Badge variant={isMaster ? "default" : "secondary"} className="text-xs">
             {isMaster ? "Master" : "Secondary"}

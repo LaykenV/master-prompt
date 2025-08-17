@@ -3,14 +3,20 @@
 //implement model reccomendations and ui and re read docs
 //set up auth and routing and settings 
 //dark mode
-select multiple models and do workflow 
-threads table 
-make responses anon to final prompt
+//select multiple models and do workflow 
+//threads table 
+
+
 need to stream secondaries
 need to save final response user message id and add to excluded ids on table
-show message by message id not thread id if master prompt
+send master model response text down to multi message to display for master model
+better handling for new multi response
 
-have each step of workflow return a text to show in ui
+responses structured. most important, things to consider, crucial things
+prompt to consider responses
+final response structured. response + obj to build table for different responses
+master model needs to be seperate thread too?
+
 text handling and scrolling
 build ui with elite model selector and look
 

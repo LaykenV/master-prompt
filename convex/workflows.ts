@@ -33,64 +33,52 @@ export const multiModelGeneration = workflow.define({
   handler: async (step, args): Promise<void> => {
     const { masterThreadId, masterMessageId, prompt, masterModelId, secondaryModelIds, userId } = args;
 
-    // Step 1: Create temporary threads for secondary models
-    const secondaryThreadCreationTasks = secondaryModelIds.map(modelId => 
+    // Step 1: Create sub-threads for ALL models (including master)
+    const allModelIds = [masterModelId, ...secondaryModelIds];
+    const allThreadCreationTasks = allModelIds.map(modelId => 
       step.runMutation(internal.workflows.createSecondaryThread, {
         modelId,
       })
     );
-    const secondaryThreadIds = await Promise.all(secondaryThreadCreationTasks);
+    const allThreadIds = await Promise.all(allThreadCreationTasks);
 
     // Step 2: Record the multi-model run
-    const secondaryRuns = secondaryModelIds.map((modelId, index) => ({
+    const allRuns = allModelIds.map((modelId, index) => ({
       modelId,
-      threadId: secondaryThreadIds[index],
+      threadId: allThreadIds[index],
+      isMaster: index === 0, // First one is the master
     }));
 
     await step.runMutation(internal.workflows.recordMultiModelRun, {
       masterMessageId,
       masterThreadId,
-      secondaryRuns,
+      masterModelId,
+      allRuns,
     });
 
-    // Step 3: Generate responses from all models in parallel (including master)
-    const allGenerationTasks = [
-      // Master model generation
+    // Step 3: Generate responses from all models in parallel (all in sub-threads)
+    const allGenerationTasks = allModelIds.map((modelId, index) =>
       step.runAction(internal.workflows.generateModelResponse, {
-        threadId: masterThreadId,
-        modelId: masterModelId,
+        threadId: allThreadIds[index],
+        modelId,
         prompt,
         userId,
-        isMaster: true,
-      }),
-      // Secondary model generations
-      ...secondaryModelIds.map((modelId, index) =>
-        step.runAction(internal.workflows.generateModelResponse, {
-          threadId: secondaryThreadIds[index],
-          modelId,
-          prompt,
-          userId,
-          isMaster: false,
-        })
-      ),
-    ];
+        isMaster: index === 0,
+      })
+    );
 
     // Wait for all responses to complete
     const allResponses = await Promise.all(allGenerationTasks);
 
-    // Step 4: Collect all responses for synthesis
-    const masterResponse = allResponses[0];
-    const secondaryResponses = allResponses.slice(1);
-
-    // Step 5: Generate synthesis prompt and create final response
+    // Step 4: Generate synthesis in the master thread
     await step.runAction(internal.workflows.generateSynthesisResponse, {
       masterThreadId,
       originalPrompt: prompt,
       masterModelId,
-      masterResponse,
-      secondaryResponses: secondaryResponses.map((response: string, index: number) => ({
-        modelId: secondaryModelIds[index],
+      allResponses: allResponses.map((response: string, index: number) => ({
+        modelId: allModelIds[index],
         response,
+        isMaster: index === 0,
       })),
       userId,
     });
@@ -127,7 +115,13 @@ export const recordMultiModelRun = internalMutation({
   args: {
     masterMessageId: v.string(),
     masterThreadId: v.string(),
-    secondaryRuns: v.array(v.object({
+    masterModelId: v.union(
+      v.literal("gpt-4o-mini"),
+      v.literal("gpt-4o"),
+      v.literal("gemini-2.5-flash"),
+      v.literal("gemini-2.5-pro")
+    ),
+    allRuns: v.array(v.object({
       modelId: v.union(
         v.literal("gpt-4o-mini"),
         v.literal("gpt-4o"),
@@ -135,14 +129,16 @@ export const recordMultiModelRun = internalMutation({
         v.literal("gemini-2.5-pro")
       ),
       threadId: v.string(),
+      isMaster: v.boolean(),
     })),
   },
   returns: v.null(),
-  handler: async (ctx, { masterMessageId, masterThreadId, secondaryRuns }) => {
+  handler: async (ctx, { masterMessageId, masterThreadId, masterModelId, allRuns }) => {
     await ctx.db.insert("multiModelRuns", {
       masterMessageId,
       masterThreadId,
-      secondaryRuns,
+      masterModelId,
+      allRuns,
     });
     return null;
   },
@@ -163,16 +159,14 @@ export const generateModelResponse = internalAction({
     isMaster: v.boolean(),
   },
   returns: v.string(),
-  handler: async (ctx, { threadId, modelId, prompt, userId, isMaster }) => {
+  handler: async (ctx, { threadId, modelId, prompt, userId }) => {
     try {
-      // For secondary models, save the initial prompt message
-      if (!isMaster) {
-        await saveMessage(ctx, components.agent, {
-          threadId,
-          userId,
-          prompt,
-        });
-      }
+      // For ALL models (including master), save the initial prompt message to their sub-thread
+      await saveMessage(ctx, components.agent, {
+        threadId,
+        userId,
+        prompt,
+      });
 
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);
@@ -199,8 +193,7 @@ export const generateSynthesisResponse = internalAction({
       v.literal("gemini-2.5-flash"),
       v.literal("gemini-2.5-pro")
     ),
-    masterResponse: v.string(),
-    secondaryResponses: v.array(v.object({
+    allResponses: v.array(v.object({
       modelId: v.union(
         v.literal("gpt-4o-mini"),
         v.literal("gpt-4o"),
@@ -208,12 +201,14 @@ export const generateSynthesisResponse = internalAction({
         v.literal("gemini-2.5-pro")
       ),
       response: v.string(),
+      isMaster: v.boolean(),
     })),
     userId: v.id("users"),
   },
   returns: v.null(),
-  handler: async (ctx, { masterThreadId, originalPrompt, masterModelId, masterResponse, secondaryResponses }) => {
+  handler: async (ctx, { masterThreadId, originalPrompt, masterModelId, allResponses, userId }) => {
     try {
+      const HIDDEN_PROMPT_PREFIX = "[HIDDEN_SYNTHESIS_PROMPT]::";
       // Create a synthesis prompt
       const synthesisPrompt = `
 You are tasked with creating a comprehensive response by synthesizing insights from multiple AI models. Here is the original question and the responses from different models:
@@ -221,11 +216,8 @@ You are tasked with creating a comprehensive response by synthesizing insights f
 **Original Question:**
 ${originalPrompt}
 
-**Response from ${AVAILABLE_MODELS[masterModelId as ModelId].displayName} (Primary):**
-${masterResponse}
-
-${secondaryResponses.map(({ modelId, response }) => `
-**Response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}:**
+${allResponses.map(({ modelId, response, isMaster }) => `
+**Response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}${isMaster ? " (Primary)" : ""}:**
 ${response}
 `).join('\n')}
 
@@ -240,13 +232,20 @@ Please provide a comprehensive, synthesized response that:
 Create a response that is better than any individual model's response by combining their strengths.
 `;
 
+      // First, save the synthesis prompt message  
+      const { messageId } = await saveMessage(ctx, components.agent, {
+        threadId: masterThreadId,
+        userId,
+        prompt: HIDDEN_PROMPT_PREFIX + synthesisPrompt,
+      });
+
       // Use the master model to generate the synthesis
       const masterAgent = createAgentWithModel(masterModelId as ModelId);
       const { thread } = await masterAgent.continueThread(ctx, { threadId: masterThreadId });
       
-      // Generate the synthesis response with streaming
+      // Generate the synthesis response with streaming, using the saved message ID
       const result = await thread.streamText(
-        { prompt: synthesisPrompt }, 
+        { promptMessageId: messageId }, 
         { saveStreamDeltas: { chunking: "line", throttleMs: 500 } }
       );
       
@@ -260,6 +259,7 @@ Create a response that is better than any individual model's response by combini
       // Fallback: save an error message
       await saveMessage(ctx, components.agent, {
         threadId: masterThreadId,
+        userId,
         message: {
           role: "assistant",
           content: `I apologize, but I encountered an error while synthesizing the responses from multiple models. Error: ${error instanceof Error ? error.message : String(error)}`,

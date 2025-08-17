@@ -10,6 +10,7 @@ import {
     syncStreams,
     saveMessage,
     getThreadMetadata,
+    extractText,
 } from "@convex-dev/agent";
 import { workflow } from "./workflows";
 
@@ -292,11 +293,23 @@ export const listThreadMessages = query({
             threadId,
             paginationOpts,
         });
+
+        const hiddenPromptPrefix = "[HIDDEN_SYNTHESIS_PROMPT]::";
+
+               // Filter out messages where the content starts with our magic string.
+        const filteredResults = paginated.page.filter((message) => {
+            // extractText is a utility from @convex-dev/agent
+            // It safely gets the text content from a message.
+            if (!message.message) return true; // Keep messages without content
+            const textContent = extractText(message.message);
+            return !textContent || !textContent.startsWith(hiddenPromptPrefix);
+        });
+        
         const streams = await syncStreams(ctx, components.agent, {
             threadId,
             streamArgs,
         });
-        return { ...paginated, streams };
+        return { ...paginated, page: filteredResults, streams };
     },
 });
 
@@ -381,7 +394,13 @@ export const getMultiModelRun = query({
             _creationTime: v.number(),
             masterMessageId: v.string(),
             masterThreadId: v.string(),
-            secondaryRuns: v.array(v.object({
+            masterModelId: v.union(
+                v.literal("gpt-4o-mini"),
+                v.literal("gpt-4o"),
+                v.literal("gemini-2.5-flash"),
+                v.literal("gemini-2.5-pro")
+            ),
+            allRuns: v.array(v.object({
                 modelId: v.union(
                     v.literal("gpt-4o-mini"),
                     v.literal("gpt-4o"),
@@ -389,6 +408,7 @@ export const getMultiModelRun = query({
                     v.literal("gemini-2.5-pro")
                 ),
                 threadId: v.string(),
+                isMaster: v.boolean(),
             })),
         })
     ),

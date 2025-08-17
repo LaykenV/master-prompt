@@ -10,7 +10,13 @@ export default defineSchema({
   multiModelRuns: defineTable({
     masterMessageId: v.string(),
     masterThreadId: v.string(),
-    secondaryRuns: v.array(v.object({
+    masterModelId: v.union(
+      v.literal("gpt-4o-mini"),
+      v.literal("gpt-4o"),
+      v.literal("gemini-2.5-flash"),
+      v.literal("gemini-2.5-pro")
+    ),
+    allRuns: v.array(v.object({
       modelId: v.union(
         v.literal("gpt-4o-mini"),
         v.literal("gpt-4o"),
@@ -18,6 +24,7 @@ export default defineSchema({
         v.literal("gemini-2.5-pro")
       ),
       threadId: v.string(),
+      isMaster: v.boolean(),
     })),
   }).index("by_master_message", ["masterMessageId"]),
 });
