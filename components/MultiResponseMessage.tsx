@@ -145,62 +145,23 @@ function ModelResponseCard({
   const messages = useThreadMessages(
     api.chat.listSecondaryThreadMessages,
     { threadId },
-    { initialNumItems: 5, stream: true }
+    { initialNumItems: 10, stream: true }
   );
 
-  if (!messages.results || messages.results.length === 0) {
-    return (
-      <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'h-32'}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
-            <span className="text-sm font-medium">
-              {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
-            </span>
-            {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0 flex items-center justify-center">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const uiMessages = toUIMessages(messages.results);
-  const assistantMessages = uiMessages.filter(m => m.role === "assistant");
+  const uiMessages = messages.results ? toUIMessages(messages.results) : [];
   
-  if (assistantMessages.length === 0) {
-    return (
-      <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'h-32'}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
-            <span className="text-sm font-medium">
-              {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
-            </span>
-            {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0 flex items-center justify-center">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const latestResponse = assistantMessages[assistantMessages.length - 1];
+  // Check if we should show loading state
+  const lastUserIndex = (() => {
+    for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
+      if (uiMessages[i].role === "user") return i;
+    }
+    return -1;
+  })();
+  const hasAssistantAfterLastUser = lastUserIndex !== -1 && uiMessages.some((m, idx) => idx > lastUserIndex && m.role === "assistant");
+  const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
 
   return (
-    <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'max-h-48'}`}>
+    <Card className={`${isMaster ? 'border-primary' : 'border-muted'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
@@ -214,23 +175,58 @@ function ModelResponseCard({
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className={`${expanded ? '' : 'max-h-24 overflow-hidden'}`}>
-          <MessageContent message={latestResponse} />
+        <div className="space-y-4 max-h-96 overflow-auto">
+          {uiMessages.map((message) => (
+            <MessageBubble key={message.key} message={message} />
+          ))}
+          {shouldShowPendingAssistant && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] rounded-lg p-4 bg-card border mr-12">
+                <div className="text-xs opacity-60 mb-1">Assistant</div>
+                <div className="mt-2 flex items-center gap-1">
+                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
+                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
+                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function MessageContent({ message }: { message: UIMessage }) {
+function MessageBubble({ message }: { message: UIMessage }) {
   const [visibleText] = useSmoothText(message.content, {
     startStreaming: message.status === "streaming",
   });
   
   return (
-    <div 
-      className="prose prose-sm max-w-none dark:prose-invert text-sm"
-      dangerouslySetInnerHTML={{ __html: visibleText }}
-    />
+    <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+      <div 
+        className={`max-w-[80%] rounded-lg p-4 ${
+          message.role === "user" 
+            ? "bg-primary text-primary-foreground ml-12" 
+            : "bg-card border mr-12"
+        }`}
+      >
+        <div className="text-xs opacity-60 mb-1">
+          {message.role === "user" ? "You" : "Assistant"}
+        </div>
+        <div 
+          className="prose prose-sm max-w-none dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: visibleText }}
+        />
+        {message.status === "streaming" && (
+          <div className="mt-2 flex items-center gap-1">
+            <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
+            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
+            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
+
