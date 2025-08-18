@@ -9,6 +9,7 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { MultiResponseMessage } from "@/components/MultiResponseMessage";
 import { Button } from "@/components/ui/button";
 import { Users, Send } from "lucide-react";
+import { ModelId } from "@/convex/agent";
 
 export default function ThreadPage() {
   const params = useParams();
@@ -50,15 +51,15 @@ export default function ThreadPage() {
         await startMultiModelGeneration({
           threadId,
           prompt: content,
-          masterModelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro",
-          secondaryModelIds: multiModelSelection.secondary as ("gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro")[],
+          masterModelId: multiModelSelection.master as ModelId,
+          secondaryModelIds: multiModelSelection.secondary as ModelId[],
         });
       } else {
         // Single model generation (original behavior)
         await sendMessage({ 
           threadId, 
           prompt: content,
-          modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro" | undefined
+          modelId: selectedModel as ModelId
         });
       }
       

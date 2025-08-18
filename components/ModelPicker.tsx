@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Bot, Sparkles, Users, Check } from "lucide-react";
+import { getModelIcon, getProviderIcon, ModelId } from "@/convex/agent";
 
 interface ModelPickerProps {
   threadId?: string;
@@ -93,14 +94,12 @@ export function ModelPicker({
   const currentModelInfo = availableModels.find(m => m.id === currentModel);
   const masterModelInfo = availableModels.find(m => m.id === multiSelectState.master);
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case "openai":
-        return "🤖";
-      case "google":
-        return "🔮";
-      default:
-        return "🤖";
+  // Helper function to get icon by model ID or fallback to provider
+  const getIcon = (modelId: string, provider?: string) => {
+    try {
+      return getModelIcon(modelId as ModelId);
+    } catch {
+      return getProviderIcon(provider || "");
     }
   };
 
@@ -136,7 +135,7 @@ export function ModelPicker({
               onClick={() => handleMasterChange(model.id)}
               className="flex items-center gap-3 cursor-pointer"
             >
-              <span className="text-lg">{getProviderIcon(model.provider)}</span>
+              <span className="text-lg">{getIcon(model.id, model.provider)}</span>
               <div className="flex flex-col flex-1">
                 <span className="font-medium">{model.displayName}</span>
                 <span className="text-xs text-muted-foreground capitalize">
@@ -166,7 +165,7 @@ export function ModelPicker({
                   isMaster ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                <span className="text-lg">{getProviderIcon(model.provider)}</span>
+                <span className="text-lg">{getIcon(model.id, model.provider)}</span>
                 <div className="flex flex-col flex-1">
                   <span className="font-medium">{model.displayName}</span>
                   <span className="text-xs text-muted-foreground capitalize">
@@ -193,7 +192,7 @@ export function ModelPicker({
           size="sm" 
           className={`flex items-center gap-2 ${className}`}
         >
-          <span className="text-sm">{getProviderIcon(currentModelInfo?.provider || "")}</span>
+          <span className="text-sm">{getIcon(currentModel, currentModelInfo?.provider)}</span>
           <span className="text-sm font-medium">
             {currentModelInfo?.displayName || currentModel}
           </span>

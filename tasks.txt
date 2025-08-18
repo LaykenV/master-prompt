@@ -14,11 +14,13 @@
 
 //add multi model to new chat
 
-responses structured. most important, things to consider, crucial things
-prompt to consider responses
+//responses structured. most important, things to consider, crucial things
+//prompt to consider responses
+fix ui for multi response
 final response structured. response + obj to build table for different responses
+add ui for table
 
-clean up model name and logo into a config
+//clean up model name and logo into a config
 figure out how to track tokens
 
 text handling and scrolling

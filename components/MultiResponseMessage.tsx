@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Sparkles, Eye, EyeOff } from "lucide-react";
+import { getModelIcon, getProviderIcon } from "@/convex/agent";
+import { ModelId } from "@/convex/agent";
 
 interface MultiResponseMessageProps {
   masterMessageId: string;
@@ -29,14 +31,12 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
     return availableModels?.find(m => m.id === modelId);
   };
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case "openai":
-        return "🤖";
-      case "google":
-        return "🔮";
-      default:
-        return "🤖";
+  // Helper function to get icon by model ID or fallback to provider
+  const getIcon = (modelId: string, provider?: string) => {
+    try {
+      return getModelIcon(modelId as ModelId);
+    } catch {
+      return getProviderIcon(provider || "");
     }
   };
 
@@ -100,7 +100,7 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
                     modelId={run.modelId}
                     modelInfo={getModelInfo(run.modelId)}
                     isMaster={run.isMaster}
-                    getProviderIcon={getProviderIcon}
+                    getIcon={getIcon}
                   />
                 ))}
               </div>
@@ -113,7 +113,7 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
                   modelId={run.modelId}
                   modelInfo={getModelInfo(run.modelId)}
                   isMaster={run.isMaster}
-                  getProviderIcon={getProviderIcon}
+                  getIcon={getIcon}
                   expanded={true}
                 />
               </TabsContent>
@@ -130,7 +130,7 @@ interface ModelResponseCardProps {
   modelId: string;
   modelInfo?: { displayName: string; provider: string };
   isMaster: boolean;
-  getProviderIcon: (provider: string) => string;
+  getIcon: (modelId: string, provider?: string) => string;
   expanded?: boolean;
 }
 
@@ -139,7 +139,7 @@ function ModelResponseCard({
   modelId, 
   modelInfo, 
   isMaster, 
-  getProviderIcon,
+  getIcon,
   expanded = false 
 }: ModelResponseCardProps) {
   const messages = useThreadMessages(
@@ -153,7 +153,7 @@ function ModelResponseCard({
       <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'h-32'}`}>
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm">{getProviderIcon(modelInfo?.provider || "openai")}</span>
+            <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
             <span className="text-sm font-medium">
               {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
             </span>
@@ -179,7 +179,7 @@ function ModelResponseCard({
       <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'h-32'}`}>
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm">{getProviderIcon(modelInfo?.provider || "openai")}</span>
+            <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
             <span className="text-sm font-medium">
               {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
             </span>
@@ -203,7 +203,7 @@ function ModelResponseCard({
     <Card className={`${isMaster ? 'border-primary' : 'border-muted'} ${expanded ? '' : 'max-h-48'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm">{getProviderIcon(modelInfo?.provider || "")}</span>
+          <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
           <span className="text-sm font-medium">
             {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
           </span>

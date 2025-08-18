@@ -1,7 +1,7 @@
 import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { createAgentWithModel, ModelId, AVAILABLE_MODELS } from "./agent";
+import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA } from "./agent";
 import { saveMessage } from "@convex-dev/agent";
 import { internalMutation, internalAction } from "./_generated/server";
 
@@ -16,18 +16,8 @@ export const multiModelGeneration = workflow.define({
     masterThreadId: v.string(),
     masterMessageId: v.string(),
     prompt: v.string(),
-    masterModelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
-    secondaryModelIds: v.array(v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    )),
+    masterModelId: MODEL_ID_SCHEMA,
+    secondaryModelIds: v.array(MODEL_ID_SCHEMA),
     userId: v.id("users"),
   },
   handler: async (step, args): Promise<void> => {
@@ -108,12 +98,7 @@ export const multiModelGeneration = workflow.define({
 // Create a temporary thread for a secondary model
 export const createSecondaryThread = internalMutation({
   args: {
-    modelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    modelId: MODEL_ID_SCHEMA,
   },
   returns: v.string(),
   handler: async (ctx, { modelId }) => {
@@ -133,19 +118,9 @@ export const recordMultiModelRun = internalMutation({
   args: {
     masterMessageId: v.string(),
     masterThreadId: v.string(),
-    masterModelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    masterModelId: MODEL_ID_SCHEMA,
     allRuns: v.array(v.object({
-      modelId: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-      ),
+      modelId: MODEL_ID_SCHEMA,
       threadId: v.string(),
       isMaster: v.boolean(),
     })),
@@ -166,12 +141,7 @@ export const recordMultiModelRun = internalMutation({
 export const generateModelResponse = internalAction({
   args: {
     threadId: v.string(),
-    modelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    modelId: MODEL_ID_SCHEMA,
     prompt: v.string(),
     userId: v.id("users"),
     isMaster: v.boolean(),
@@ -205,20 +175,10 @@ export const generateModelResponse = internalAction({
 export const generateDebateResponse = internalAction({
   args: {
     threadId: v.string(),
-    modelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    modelId: MODEL_ID_SCHEMA,
     originalPrompt: v.string(),
     otherResponses: v.array(v.object({
-      modelId: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-      ),
+      modelId: MODEL_ID_SCHEMA,
       response: v.string(),
     })),
     userId: v.id("users"),
@@ -270,19 +230,9 @@ export const generateSynthesisResponse = internalAction({
   args: {
     masterThreadId: v.string(),
     originalPrompt: v.string(),
-    masterModelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    masterModelId: MODEL_ID_SCHEMA,
     allResponses: v.array(v.object({
-      modelId: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-      ),
+      modelId: MODEL_ID_SCHEMA,
       response: v.string(),
       isMaster: v.boolean(),
     })),

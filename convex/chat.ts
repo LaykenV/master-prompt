@@ -1,4 +1,4 @@
-import { masterPromptAgent, createAgentWithModel, AVAILABLE_MODELS, type ModelId } from "./agent";
+import { masterPromptAgent, createAgentWithModel, AVAILABLE_MODELS, MODEL_ID_SCHEMA, type ModelId } from "./agent";
 import { action, query, internalAction, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
@@ -44,12 +44,7 @@ export const createThread = action({
     args: {
         title: v.optional(v.string()),
         initialPrompt: v.optional(v.string()),
-        modelId: v.optional(v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        )),
+        modelId: v.optional(MODEL_ID_SCHEMA),
     },
     returns: v.string(),
     handler: async (ctx, args) => {
@@ -121,12 +116,7 @@ export const deleteThread = action({
 // Function to get thread model preference
 export const getThreadModel = query({
     args: { threadId: v.string() },
-    returns: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-    ),
+    returns: MODEL_ID_SCHEMA,
     handler: async (ctx, { threadId }) => {
         await authorizeThreadAccess(ctx, threadId);
         const thread = await getThreadMetadata(ctx, components.agent, { threadId });
@@ -155,12 +145,7 @@ export const saveInitialMessage = internalMutation({
         threadId: v.string(),
         userId: v.id("users"),
         prompt: v.string(),
-        modelId: v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        ),
+        modelId: MODEL_ID_SCHEMA,
     },
     returns: v.null(),
     handler: async (ctx, { threadId, userId, prompt, modelId }) => {
@@ -183,12 +168,7 @@ export const sendMessage = mutation({
     args: {
         threadId: v.string(),
         prompt: v.string(),
-        modelId: v.optional(v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        )),
+        modelId: v.optional(MODEL_ID_SCHEMA),
     },
     returns: v.null(),
     handler: async (ctx, { threadId, prompt, modelId }) => {
@@ -227,12 +207,7 @@ export const sendMessage = mutation({
 // Internal query to get thread model (no auth needed for internal calls)
 export const getThreadModelInternal = internalQuery({
     args: { threadId: v.string() },
-    returns: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-    ),
+    returns: MODEL_ID_SCHEMA,
     handler: async (ctx, { threadId }) => {
         const thread = await getThreadMetadata(ctx, components.agent, { threadId });
         const summary = thread.summary;
@@ -257,12 +232,7 @@ export const generateResponseStreamingAsync = internalAction({
     args: { 
         threadId: v.string(), 
         promptMessageId: v.string(),
-        modelId: v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        ),
+        modelId: MODEL_ID_SCHEMA,
     },
     returns: v.null(),
     handler: async (ctx, { threadId, promptMessageId, modelId }) => {
@@ -338,18 +308,8 @@ export const startMultiModelGeneration = action({
     args: {
         threadId: v.string(),
         prompt: v.string(),
-        masterModelId: v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        ),
-        secondaryModelIds: v.array(v.union(
-            v.literal("gpt-4o-mini"),
-            v.literal("gpt-4o"),
-            v.literal("gemini-2.5-flash"),
-            v.literal("gemini-2.5-pro")
-        )),
+        masterModelId: MODEL_ID_SCHEMA,
+        secondaryModelIds: v.array(MODEL_ID_SCHEMA),
     },
     returns: v.string(), // Returns the workflow ID
     handler: async (ctx, { threadId, prompt, masterModelId, secondaryModelIds }): Promise<string> => {
@@ -394,19 +354,9 @@ export const getMultiModelRun = query({
             _creationTime: v.number(),
             masterMessageId: v.string(),
             masterThreadId: v.string(),
-            masterModelId: v.union(
-                v.literal("gpt-4o-mini"),
-                v.literal("gpt-4o"),
-                v.literal("gemini-2.5-flash"),
-                v.literal("gemini-2.5-pro")
-            ),
+            masterModelId: MODEL_ID_SCHEMA,
             allRuns: v.array(v.object({
-                modelId: v.union(
-                    v.literal("gpt-4o-mini"),
-                    v.literal("gpt-4o"),
-                    v.literal("gemini-2.5-flash"),
-                    v.literal("gemini-2.5-pro")
-                ),
+                modelId: MODEL_ID_SCHEMA,
                 threadId: v.string(),
                 isMaster: v.boolean(),
             })),

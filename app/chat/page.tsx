@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
+import { ModelId } from "@/convex/agent";
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -31,15 +32,15 @@ export default function NewChatPage() {
         // Multi-model generation: Create thread without initial prompt, then start multi-model workflow
         const threadId = await createThread({ 
           title: content.slice(0, 80),
-          modelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
+          modelId: multiModelSelection.master as ModelId
         });
         
         // Start multi-model generation
         await startMultiModelGeneration({
           threadId,
           prompt: content,
-          masterModelId: multiModelSelection.master as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro",
-          secondaryModelIds: multiModelSelection.secondary as ("gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro")[],
+          masterModelId: multiModelSelection.master as ModelId,
+          secondaryModelIds: multiModelSelection.secondary as ModelId[],
         });
         
         router.push(`/chat/${threadId}`);
@@ -48,7 +49,7 @@ export default function NewChatPage() {
         const threadId = await createThread({ 
           title: content.slice(0, 80),
           initialPrompt: content,
-          modelId: selectedModel as "gpt-4o-mini" | "gpt-4o" | "gemini-2.5-flash" | "gemini-2.5-pro"
+          modelId: selectedModel as ModelId
         });
         router.push(`/chat/${threadId}`);
       }

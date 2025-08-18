@@ -14,22 +14,12 @@ The system creates individual sub-threads for ALL selected models (including the
 multiModelRuns: defineTable({
   masterMessageId: v.string(),
   masterThreadId: v.string(),
-  masterModelId: v.union(
-    v.literal("gpt-4o-mini"),
-    v.literal("gpt-4o"),
-    v.literal("gemini-2.5-flash"),
-    v.literal("gemini-2.5-pro")
-  ),
+  masterModelId: MODEL_ID_SCHEMA,
   allRuns: v.array(v.object({
-    modelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
-    threadId: v.string(),
-    isMaster: v.boolean(),
-  })),
+      modelId: MODEL_ID_SCHEMA,
+      threadId: v.string(),
+      isMaster: v.boolean(),
+    })),
 }).index("by_master_message", ["masterMessageId"])
 ```
 
@@ -270,7 +260,69 @@ The upgraded workflow now implements the multi-agent debate methodology from rec
 - UI components: Updated to display all sub-threads including master model
 - API design: Enhanced with proper separation between sub-thread responses and synthesis
 
-## 10. Implementation Summary
+## 10. Available Models Configuration
+
+### Current Model Support
+
+The system supports 5 AI models across 2 providers:
+
+```typescript
+export const AVAILABLE_MODELS = {
+  "gpt-4o-mini": {
+    provider: "openai",
+    displayName: "GPT-4o Mini",
+    icon: "🤖",
+    chatModel: () => openai.chat("gpt-4o-mini"),
+  },
+  "gpt-4o": {
+    provider: "openai", 
+    displayName: "GPT-4o",
+    icon: "🤖",
+    chatModel: () => openai.chat("gpt-4o"),
+  },
+  "gemini-2.5-flash": {
+    provider: "google",
+    displayName: "Gemini 2.5 Flash",
+    icon: "🔮",
+    chatModel: () => google("gemini-2.5-flash"),
+  },
+  "gemini-2.5-pro": {
+    provider: "google",
+    displayName: "Gemini 2.5 Pro",
+    icon: "🔮",
+    chatModel: () => google("gemini-2.5-pro"),
+  },
+  "gemini-2.0-flash": {
+    provider: "google",
+    displayName: "Gemini 2.0 Flash",
+    icon: "🔮",
+    chatModel: () => google("gemini-2.0-flash"),
+  },
+} as const;
+```
+
+### Schema Validation
+
+The MODEL_ID_SCHEMA ensures type safety across the application:
+
+```typescript
+export const MODEL_ID_SCHEMA = v.union(
+  v.literal("gpt-4o-mini"),
+  v.literal("gpt-4o"),
+  v.literal("gemini-2.5-flash"),
+  v.literal("gemini-2.5-pro"),
+  v.literal("gemini-2.0-flash")
+);
+```
+
+### Helper Functions
+
+- `getChatModel(modelId)`: Returns the chat model instance for the given ID
+- `getModelIcon(modelId)`: Returns the icon for the given model
+- `getProviderIcon(provider)`: Returns provider icon (OpenAI: 🤖, Google: 🔮)
+- `createAgentWithModel(modelId)`: Creates an agent instance with specified model
+
+## 11. Implementation Summary
 
 This updated implementation provides a cleaner separation of concerns:
 

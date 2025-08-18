@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
+import { MODEL_ID_SCHEMA } from "./agent";
 
 // The schema is normally optional, but Convex Auth
 // requires indexes defined on `authTables`.
@@ -10,19 +11,9 @@ export default defineSchema({
   multiModelRuns: defineTable({
     masterMessageId: v.string(),
     masterThreadId: v.string(),
-    masterModelId: v.union(
-      v.literal("gpt-4o-mini"),
-      v.literal("gpt-4o"),
-      v.literal("gemini-2.5-flash"),
-      v.literal("gemini-2.5-pro")
-    ),
+    masterModelId: MODEL_ID_SCHEMA,
     allRuns: v.array(v.object({
-      modelId: v.union(
-        v.literal("gpt-4o-mini"),
-        v.literal("gpt-4o"),
-        v.literal("gemini-2.5-flash"),
-        v.literal("gemini-2.5-pro")
-      ),
+      modelId: MODEL_ID_SCHEMA,
       threadId: v.string(),
       isMaster: v.boolean(),
     })),
