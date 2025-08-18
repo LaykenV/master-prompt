@@ -56,8 +56,9 @@ export const multiModelGeneration = workflow.define({
       allRuns,
     });
 
-    // Step 3: Generate responses from all models in parallel (all in sub-threads)
-    const allGenerationTasks = allModelIds.map((modelId, index) =>
+    // --- ROUND 1: INITIAL GENERATION ---
+    // Step 3: Generate initial responses from all models in parallel
+    const initialGenerationTasks = allModelIds.map((modelId, index) =>
       step.runAction(internal.workflows.generateModelResponse, {
         threadId: allThreadIds[index],
         modelId,
@@ -66,16 +67,33 @@ export const multiModelGeneration = workflow.define({
         isMaster: index === 0,
       })
     );
+    const initialResponses = await Promise.all(initialGenerationTasks);
+    const initialResponsesWithMeta = initialResponses.map((response: string, index: number) => ({
+      modelId: allModelIds[index],
+      response,
+    }));
 
-    // Wait for all responses to complete
-    const allResponses = await Promise.all(allGenerationTasks);
-
-    // Step 4: Generate synthesis in the master thread
+    // --- ROUND 2: DEBATE ROUND ---
+    // Step 4: Each model generates a refined response based on others' initial answers
+    const debateGenerationTasks = allModelIds.map((modelId, index) =>
+      step.runAction(internal.workflows.generateDebateResponse, {
+        threadId: allThreadIds[index],
+        modelId,
+        originalPrompt: prompt,
+        // Provide the responses from all OTHER models for peer review
+        otherResponses: initialResponsesWithMeta.filter((_, i) => i !== index),
+        userId,
+      })
+    );
+    const refinedResponses = await Promise.all(debateGenerationTasks);
+    
+    // Step 5: Generate final synthesis in the master thread using the REFINED responses
     await step.runAction(internal.workflows.generateSynthesisResponse, {
       masterThreadId,
       originalPrompt: prompt,
       masterModelId,
-      allResponses: allResponses.map((response: string, index: number) => ({
+      // Pass the refined responses to the synthesis step
+      allResponses: refinedResponses.map((response: string, index: number) => ({
         modelId: allModelIds[index],
         response,
         isMaster: index === 0,
@@ -183,6 +201,70 @@ export const generateModelResponse = internalAction({
   },
 });
 
+// NEW ACTION: Generate a refined response based on peer review (Debate Round)
+export const generateDebateResponse = internalAction({
+  args: {
+    threadId: v.string(),
+    modelId: v.union(
+      v.literal("gpt-4o-mini"),
+      v.literal("gpt-4o"),
+      v.literal("gemini-2.5-flash"),
+      v.literal("gemini-2.5-pro")
+    ),
+    originalPrompt: v.string(),
+    otherResponses: v.array(v.object({
+      modelId: v.union(
+        v.literal("gpt-4o-mini"),
+        v.literal("gpt-4o"),
+        v.literal("gemini-2.5-flash"),
+        v.literal("gemini-2.5-pro")
+      ),
+      response: v.string(),
+    })),
+    userId: v.id("users"),
+  },
+  returns: v.string(),
+  handler: async (ctx, { threadId, modelId, originalPrompt, otherResponses, userId }) => {
+    try {
+      // Construct the debate prompt using the research paper's methodology
+      const debatePrompt = `
+**Original Question:**
+${originalPrompt}
+
+---
+Here are the solutions to the problem from other agents. Your task is to critically re-evaluate your own initial answer in light of these other perspectives.
+
+${otherResponses.map(({ modelId: otherModelId, response }) => `
+**Response from ${AVAILABLE_MODELS[otherModelId as ModelId].displayName}:**
+${response}
+`).join('\n')}
+
+---
+**Your Instructions:**
+Using the reasoning from these other agents as additional advice, provide an updated and improved final response to the original question. If the other agents' reasoning has convinced you to change your mind, explain why. If you maintain your original position, justify it against the alternatives.
+`;
+
+      // Save the debate prompt message
+      const { messageId } = await saveMessage(ctx, components.agent, {
+        threadId,
+        userId,
+        prompt: debatePrompt,
+      });
+
+      // Create an agent instance with the specific model
+      const agent = createAgentWithModel(modelId as ModelId);
+      const { thread } = await agent.continueThread(ctx, { threadId });
+      const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
+      await result.consumeStream();
+      
+      return result.text;
+    } catch (error) {
+      console.error(`Error generating DEBATE response for model ${modelId}:`, error);
+      return `Error generating debate response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  },
+});
+
 // Generate the final synthesis response
 export const generateSynthesisResponse = internalAction({
   args: {
@@ -210,27 +292,20 @@ export const generateSynthesisResponse = internalAction({
   handler: async (ctx, { masterThreadId, originalPrompt, masterModelId, allResponses, userId }) => {
     try {
       const HIDDEN_PROMPT_PREFIX = "[HIDDEN_SYNTHESIS_PROMPT]::";
-      // Create a synthesis prompt
+      // Update the synthesis prompt to reflect it's operating on refined answers
       const synthesisPrompt = `
-You are tasked with creating a comprehensive response by synthesizing insights from multiple AI models. Here is the original question and the responses from different models:
+You are a lead AI expert tasked with creating a final, definitive response. Multiple expert AI models have already engaged in a round of debate to refine their initial answers. Your job is to synthesize their refined conclusions.
 
 **Original Question:**
 ${originalPrompt}
 
 ${allResponses.map(({ modelId, response, isMaster }) => `
-**Response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}${isMaster ? " (Primary)" : ""}:**
+**Refined Conclusion from ${AVAILABLE_MODELS[modelId as ModelId].displayName}${isMaster ? " (Primary)" : ""}:**
 ${response}
 `).join('\n')}
 
-**Instructions:**
-Please provide a comprehensive, synthesized response that:
-1. Incorporates the best insights from all models
-2. Highlights areas of agreement and disagreement
-3. Provides a balanced perspective
-4. Is clear, coherent, and well-structured
-5. Gives credit to different perspectives when appropriate
-
-Create a response that is better than any individual model's response by combining their strengths.
+**Final Instructions:**
+Synthesize these peer-reviewed conclusions into a single, comprehensive, and authoritative response. Structure the answer clearly, integrate the strongest points from each model, and deliver a final product that is superior to any single refined response.
 `;
 
       // First, save the synthesis prompt message  

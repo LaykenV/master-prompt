@@ -53,21 +53,23 @@ multiModelRuns: defineTable({
 export const workflow = new WorkflowManager(components.workflow as any);
 ```
 
-**Main Workflow: `multiModelGeneration`**
+**Main Workflow: `multiModelGeneration` (Enhanced with Multi-Agent Debate)**
 
-The workflow executes these steps:
+The workflow now implements a multi-agent debate methodology with these steps:
 
 1. **Setup Phase**: Creates sub-threads for ALL models (including master) using `createSecondaryThread`
 2. **Record Keeping**: Stores the multi-model run relationship in `multiModelRuns` table with all sub-thread information
-3. **Parallel Generation**: Executes `generateModelResponse` for all models in their respective sub-threads simultaneously
-4. **Synthesis**: Uses `generateSynthesisResponse` to create a comprehensive final answer in the master thread
+3. **Round 1 - Initial Generation**: Executes `generateModelResponse` for all models in their respective sub-threads simultaneously
+4. **Round 2 - Debate Phase**: Executes `generateDebateResponse` where each model refines its answer based on peer responses
+5. **Final Synthesis**: Uses `generateSynthesisResponse` to create a comprehensive final answer from the refined responses
 
 **Supporting Functions**:
 
 - `createSecondaryThread`: Creates sub-threads with descriptive titles for all models
 - `recordMultiModelRun`: Stores the relationship between master thread and all sub-threads
-- `generateModelResponse`: Generates responses from individual models in their sub-threads with error handling
-- `generateSynthesisResponse`: Creates synthesized response in the master thread using all sub-thread responses
+- `generateModelResponse`: Generates initial responses from individual models in their sub-threads with error handling
+- `generateDebateResponse`: **NEW** - Generates refined responses where each model critiques and improves upon peer responses
+- `generateSynthesisResponse`: Creates synthesized response from the peer-reviewed, refined responses
 
 ### Chat API (`convex/chat.ts`)
 
@@ -163,14 +165,16 @@ const [multiModelSelection, setMultiModelSelection] = useState<{
 3. User selects master model and one or more secondary models
 4. Send button updates to show "Send to X Models"
 
-### Message Processing
+### Message Processing (Enhanced with Multi-Agent Debate)
 1. User sends message → `startMultiModelGeneration` action triggered
 2. Workflow creates sub-threads for ALL models (including master model)
-3. All models generate responses in parallel in their respective sub-threads
-4. UI displays `MultiResponseMessage` component with individual responses from all sub-threads
-5. After all sub-thread responses complete, synthesis is generated in the master thread
-6. Synthesis prompt is saved to master thread but hidden from UI
-7. Final synthesis response appears as normal assistant message in master thread
+3. **Round 1**: All models generate initial responses in parallel in their respective sub-threads
+4. UI displays initial responses from all sub-threads in `MultiResponseMessage` component
+5. **Round 2**: Each model generates refined responses after reviewing other models' initial answers
+6. UI updates with refined responses from the debate round
+7. **Final Synthesis**: Synthesis is generated in the master thread using the refined, peer-reviewed responses
+8. Synthesis prompt is saved to master thread but hidden from UI
+9. Final synthesis response appears as normal assistant message in master thread
 
 ### Response Display
 - **Compact View**: Shows original question with toggle to expand
@@ -217,23 +221,40 @@ const [multiModelSelection, setMultiModelSelection] = useState<{
 - No retry mechanism for failed individual model requests
 - Synthesis prompt is not filtered from UI (implementation limitation)
 
-## 7. Future Enhancement Opportunities
+## 7. Multi-Agent Debate Implementation Benefits
+
+### Research-Backed Improvements
+The upgraded workflow now implements the multi-agent debate methodology from recent AI research, providing:
+
+1. **Improved Factuality**: Models critique each other's responses, reducing hallucinations
+2. **Enhanced Reasoning**: Peer review forces models to justify and refine their logic
+3. **Better Quality**: Final responses are superior to initial generation through iterative improvement
+4. **Robust Consensus**: Synthesis operates on peer-reviewed conclusions rather than raw outputs
+
+### Performance Gains
+- **Higher Accuracy**: Research shows significant improvement in factual correctness
+- **Better Reasoning**: Multi-step validation improves logical consistency
+- **Reduced Bias**: Cross-model review helps identify and correct individual model biases
+
+## 8. Future Enhancement Opportunities
 
 ### Potential Improvements
-1. **Model Comparison**: Side-by-side comparison view
-2. **Response Rating**: Allow users to rate individual responses
-3. **Custom Synthesis Prompts**: User-defined synthesis instructions
-4. **Response Export**: Export all responses as markdown/PDF
-5. **Model Performance Metrics**: Show response times and token usage
-6. **Async Notifications**: Alert when all responses complete
+1. **Model Comparison**: Side-by-side comparison view of initial vs refined responses
+2. **Response Rating**: Allow users to rate individual responses and debate quality
+3. **Custom Debate Prompts**: User-defined debate instructions and criteria
+4. **Multiple Debate Rounds**: Extend beyond single debate round for complex problems
+5. **Response Export**: Export all responses including debate evolution as markdown/PDF
+6. **Model Performance Metrics**: Show response times, token usage, and improvement metrics
+7. **Async Notifications**: Alert when all responses and debate rounds complete
 
 ### Technical Enhancements
-1. **Better Error Recovery**: Retry failed model requests
-2. **Response Caching**: Cache common responses
-3. **Model Selection Memory**: Remember user's preferred model combinations
-4. **Advanced Synthesis**: Different synthesis strategies (comparative, summary, etc.)
+1. **Better Error Recovery**: Retry failed model requests in both rounds
+2. **Response Caching**: Cache responses and debate outcomes
+3. **Model Selection Memory**: Remember user's preferred model combinations for debates
+4. **Advanced Synthesis**: Different synthesis strategies (comparative, summary, consensus, etc.)
+5. **Debate Analytics**: Track improvement metrics from initial to refined responses
 
-## 8. Development Notes
+## 9. Development Notes
 
 ### Key Design Decisions
 1. **Workflow-based**: Ensures reliable parallel execution and proper error handling
@@ -249,7 +270,7 @@ const [multiModelSelection, setMultiModelSelection] = useState<{
 - UI components: Updated to display all sub-threads including master model
 - API design: Enhanced with proper separation between sub-thread responses and synthesis
 
-## 9. Implementation Summary
+## 10. Implementation Summary
 
 This updated implementation provides a cleaner separation of concerns:
 
@@ -260,12 +281,14 @@ This updated implementation provides a cleaner separation of concerns:
 4. **Scalable Design**: Easy to add more models without changing the core architecture
 5. **Improved Streaming**: Each model streams independently in its own thread
 
-### Workflow Summary:
+### Enhanced Workflow Summary (Multi-Agent Debate):
 1. User selects multiple models and sends message
 2. System creates sub-threads for each selected model (including master)
-3. All models generate responses in parallel in their respective sub-threads
-4. UI displays all individual responses using MultiResponseMessage component
-5. After all responses complete, synthesis is generated in the master thread
-6. Final synthesis appears as a regular assistant message in the main conversation
+3. **Round 1**: All models generate initial responses in parallel in their respective sub-threads
+4. UI displays initial responses using MultiResponseMessage component
+5. **Round 2**: Each model generates refined response after reviewing other models' initial answers
+6. UI updates with peer-reviewed, refined responses
+7. **Final Synthesis**: Synthesis is generated using the refined responses (superior to original approach)
+8. Final synthesis appears as a regular assistant message in the main conversation
 
-This implementation provides a robust foundation for multi-model AI interactions while maintaining clear separation between individual model responses and synthesized results.
+This enhanced implementation leverages research-proven multi-agent debate methodology to improve response quality through peer review and iterative refinement, providing superior results compared to simple parallel generation.
