@@ -12,22 +12,20 @@
 //send master model response text down to multi message to display for master model
 //better handling for new multi response
 
-add multi model to new chat
+//add multi model to new chat
 
 responses structured. most important, things to consider, crucial things
 prompt to consider responses
 final response structured. response + obj to build table for different responses
 
+clean up model name and logo into a config
+figure out how to track tokens
+
 text handling and scrolling
 build ui with elite model selector and look
 
-
-
-
-
-
-tokens?
 polar?
 rate limiting?
+
 upload files and img?
 img gen?
