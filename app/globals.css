@@ -127,6 +127,11 @@
 }
 
 @layer utilities {
+  /* Ensure html and body take full height */
+  html, body {
+    height: 100%;
+  }
+
   /* Custom scrollbar for webkit browsers */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

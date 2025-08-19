@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useThreadMessages, toUIMessages, useSmoothText, type UIMessage } from "@convex-dev/agent/react";
+import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Sparkles, Eye, EyeOff } from "lucide-react";
 import { getModelIcon, getProviderIcon } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
+import { MessageBubble } from "./MessageBubble";
 
 interface MultiResponseMessageProps {
   masterMessageId: string;
@@ -114,7 +115,6 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
                   modelInfo={getModelInfo(run.modelId)}
                   isMaster={run.isMaster}
                   getIcon={getIcon}
-                  expanded={true}
                 />
               </TabsContent>
             ))}
@@ -131,7 +131,6 @@ interface ModelResponseCardProps {
   modelInfo?: { displayName: string; provider: string };
   isMaster: boolean;
   getIcon: (modelId: string, provider?: string) => string;
-  expanded?: boolean;
 }
 
 function ModelResponseCard({ 
@@ -140,7 +139,6 @@ function ModelResponseCard({
   modelInfo, 
   isMaster, 
   getIcon,
-  expanded = false 
 }: ModelResponseCardProps) {
   const messages = useThreadMessages(
     api.chat.listSecondaryThreadMessages,
@@ -197,36 +195,4 @@ function ModelResponseCard({
   );
 }
 
-function MessageBubble({ message }: { message: UIMessage }) {
-  const [visibleText] = useSmoothText(message.content, {
-    startStreaming: message.status === "streaming",
-  });
-  
-  return (
-    <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-      <div 
-        className={`max-w-[80%] rounded-lg p-4 transition-colors ${
-          message.role === "user" 
-            ? "bg-primary text-primary-foreground ml-12 hover:bg-primary/90" 
-            : "bg-card border border-border mr-12 hover:bg-card/80"
-        }`}
-      >
-        <div className="text-xs opacity-60 mb-1">
-          {message.role === "user" ? "You" : "Assistant"}
-        </div>
-        <div 
-          className="prose prose-sm max-w-none dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: visibleText }}
-        />
-        {message.status === "streaming" && (
-          <div className="mt-2 flex items-center gap-1">
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-            <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 

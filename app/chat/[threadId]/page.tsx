@@ -4,9 +4,9 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
-import { toUIMessages, useThreadMessages, optimisticallySendMessage, useSmoothText, UIMessage } from "@convex-dev/agent/react";
+import { useThreadMessages, optimisticallySendMessage } from "@convex-dev/agent/react";
 import { ModelPicker } from "@/components/ModelPicker";
-import { MultiResponseMessage } from "@/components/MultiResponseMessage";
+import { ChatMessages } from "@/components/ChatMessages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Users, Send } from "lucide-react";
@@ -106,7 +106,7 @@ export default function ThreadPage() {
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <Messages messages={messages} />
+        <ChatMessages messages={messages} />
       </div>
       <div className="border-t border-border bg-background p-4">
         <div className="mx-auto max-w-4xl flex gap-2">
@@ -141,126 +141,5 @@ export default function ThreadPage() {
 }
 
 
-function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages> }) {
-  if (messages.isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-muted-foreground" role="status" aria-label="Loading messages">Loading messages...</div>
-      </div>
-    );
-  }
-
-  if (!messages.results || messages.results.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="text-muted-foreground">No messages yet</div>
-          <div className="text-sm text-muted-foreground">Start the conversation below</div>
-        </div>
-      </div>
-    );
-  }
-
-  const uiMessages = toUIMessages(messages.results ?? []);
-
-  // Show a derived loader bubble if the latest message is from the user
-  // and there is no assistant message after it (streaming or complete).
-  const lastUserIndex = (() => {
-    for (let i = uiMessages.length - 1; i >= 0; i -= 1) {
-      if (uiMessages[i].role === "user") return i;
-    }
-    return -1;
-  })();
-  const hasAssistantAfterLastUser = lastUserIndex !== -1 && uiMessages.some((m, idx) => idx > lastUserIndex && m.role === "assistant");
-  const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
-  
-  return (
-    <div className="h-full overflow-auto p-4 custom-scrollbar">
-      <div className="mx-auto max-w-4xl space-y-4">
-        {uiMessages.map((m, index) => {
-          // Check if this is a user message that might be part of a multi-model run
-          if (m.role === "user") {
-            return (
-              <MessageWithMultiModel 
-                key={m.key} 
-                message={m} 
-                messageId={messages.results?.[index]?._id}
-              />
-            );
-          }
-          return <MessageBubble key={m.key} message={m} />;
-        })}
-        {shouldShowPendingAssistant && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg p-4 bg-card border border-border mr-12">
-              <div className="text-xs opacity-60 mb-1">Assistant</div>
-              <div className="mt-2 flex items-center gap-1">
-                <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-                <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-                <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MessageWithMultiModel({ message, messageId }: { message: UIMessage; messageId?: string }) {
-  const multiModelRun = useQuery(
-    api.chat.getMultiModelRun, 
-    messageId ? { masterMessageId: messageId } : "skip"
-  );
-
-  // If this message is part of a multi-model run, show the multi-response component
-  if (multiModelRun) {
-    return (
-      <div className="space-y-4">
-        <MessageBubble message={message} />
-        <MultiResponseMessage 
-          masterMessageId={messageId!} 
-          originalPrompt={message.content}
-        />
-      </div>
-    );
-  }
-
-  // Otherwise, show the regular message bubble
-  return <MessageBubble message={message} />;
-}
-
-function MessageBubble({ message }: { message: UIMessage }) {
-    const [visibleText] = useSmoothText(message.content, {
-      startStreaming: message.status === "streaming",
-    });
-    
-    return (
-      <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-        <div 
-          className={`max-w-[80%] rounded-lg p-4 transition-colors ${
-            message.role === "user" 
-              ? "bg-primary text-primary-foreground ml-12 hover:bg-primary/90" 
-              : "bg-card border border-border mr-12 hover:bg-card/80"
-          }`}
-        >
-          <div className="text-xs opacity-60 mb-1">
-            {message.role === "user" ? "You" : "Assistant"}
-          </div>
-          <div 
-            className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: visibleText }}
-          />
-          {message.status === "streaming" && (
-            <div className="mt-2 flex items-center gap-1">
-              <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-              <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-              <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
 

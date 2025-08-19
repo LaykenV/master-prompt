@@ -22,13 +22,13 @@ final response structured. response + obj to build table for different responses
 add ui for table
 
 //clean up model name and logo into a config
-figure out how to track tokens
+//figure out how to track tokens
 
 text handling and scrolling
 build ui with elite model selector and look
 
-polar?
+polar? how to handle subs?
 rate limiting?
 
-upload files and img?
+upload files / img?
 img gen?

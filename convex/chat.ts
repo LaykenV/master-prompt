@@ -241,7 +241,7 @@ export const generateResponseStreamingAsync = internalAction({
             const threadAgent = createAgentWithModel(modelId as ModelId);
             
             const { thread } = await threadAgent.continueThread(ctx, { threadId });
-            const result = await thread.streamText({ promptMessageId }, { saveStreamDeltas: {chunking: "line", throttleMs: 500 } });
+            const result = await thread.streamText({ promptMessageId }, { saveStreamDeltas: {chunking: "line", throttleMs: 20 } });
             await result.consumeStream();
             return null;
         } catch (error) {

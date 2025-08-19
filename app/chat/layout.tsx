@@ -60,7 +60,7 @@ export default function ChatLayout({
   }, [pathname]);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-full">
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">
@@ -168,14 +168,14 @@ export default function ChatLayout({
         )}
       </Sidebar>
       
-      <SidebarInset>
+      <SidebarInset className="h-full flex flex-col">
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
           </div>
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 overflow-hidden">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
