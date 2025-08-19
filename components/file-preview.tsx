@@ -2,34 +2,50 @@
 
 import React, { useEffect } from "react"
 import { motion } from "framer-motion"
-import { FileIcon, X } from "lucide-react"
+import { FileIcon, X, Download } from "lucide-react"
 
 interface FilePreviewProps {
-  file: File
+  file?: File
+  url?: string
+  fileName?: string
+  mimeType?: string
+  isUserMessage?: boolean
   onRemove?: () => void
 }
 
 export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   (props, ref) => {
-    if (props.file.type.startsWith("image/")) {
-      return <ImageFilePreview {...props} ref={ref} />
+    // Handle uploaded files (with URL)
+    if (props.url) {
+      return <UploadedFilePreview {...props} ref={ref} />
     }
+    
+    // Handle local files during upload
+    if (props.file) {
+      if (props.file.type.startsWith("image/")) {
+        return <ImageFilePreview {...props} ref={ref} />
+      }
 
-    if (
-      props.file.type.startsWith("text/") ||
-      props.file.name.endsWith(".txt") ||
-      props.file.name.endsWith(".md")
-    ) {
-      return <TextFilePreview {...props} ref={ref} />
+      if (
+        props.file.type.startsWith("text/") ||
+        props.file.name.endsWith(".txt") ||
+        props.file.name.endsWith(".md")
+      ) {
+        return <TextFilePreview {...props} ref={ref} />
+      }
+
+      return <GenericFilePreview {...props} ref={ref} />
     }
-
-    return <GenericFilePreview {...props} ref={ref} />
+    
+    return null
   }
 )
 FilePreview.displayName = "FilePreview"
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
+    if (!file) return null;
+    
     return (
       <motion.div
         ref={ref}
@@ -72,6 +88,8 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     const [preview, setPreview] = React.useState<string>("")
 
     useEffect(() => {
+      if (!file) return;
+      
       const reader = new FileReader()
       reader.onload = (e) => {
         const text = e.target?.result as string
@@ -79,6 +97,8 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
       }
       reader.readAsText(file)
     }, [file])
+    
+    if (!file) return null;
 
     return (
       <motion.div
@@ -118,6 +138,8 @@ TextFilePreview.displayName = "TextFilePreview"
 
 const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
+    if (!file) return null;
+    
     return (
       <motion.div
         ref={ref}
@@ -151,3 +173,63 @@ const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   }
 )
 GenericFilePreview.displayName = "GenericFilePreview"
+
+const UploadedFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
+  ({ url, fileName, mimeType, isUserMessage }, ref) => {
+    const isImage = mimeType?.startsWith("image/")
+    
+    if (isImage) {
+      return (
+        <div ref={ref} className="relative">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={fileName || "Uploaded image"}
+            className="max-w-full max-h-64 rounded-lg border shadow-sm object-contain bg-muted"
+            loading="lazy"
+          />
+          {fileName && (
+            <div className="mt-1 text-xs text-muted-foreground truncate">
+              {fileName}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Non-image files
+    return (
+      <div 
+        ref={ref}
+        className={`flex items-center space-x-3 p-3 rounded-lg border max-w-sm ${
+          isUserMessage 
+            ? "bg-primary/10 border-primary/20" 
+            : "bg-muted/50 border-border"
+        }`}
+      >
+        <div className="flex-shrink-0">
+          <FileIcon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">
+            {fileName || "Attachment"}
+          </div>
+          {mimeType && (
+            <div className="text-xs text-muted-foreground">
+              {mimeType}
+            </div>
+          )}
+        </div>
+        <a
+          href={url}
+          download={fileName}
+          className="flex-shrink-0 p-1 hover:bg-muted rounded transition-colors"
+          aria-label="Download file"
+        >
+          <Download className="h-4 w-4 text-muted-foreground" />
+        </a>
+      </div>
+    )
+  }
+)
+UploadedFilePreview.displayName = "UploadedFilePreview"

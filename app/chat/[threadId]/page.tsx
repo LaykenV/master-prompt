@@ -42,18 +42,30 @@ export default function ThreadPage() {
 
   // No explicit pending state; loader is derived from message list
 
+    const uploadFile = useAction(api.chat.uploadFile);
+
   const handleSend = useCallback(async (text?: string, e?: React.FormEvent) => {
     e?.preventDefault();
     const content = (text ?? input).trim();
     if (!content || isSending || !user?._id) return;
     setIsSending(true);
     
-    // Log files for now (TODO: integrate with API)
-    if (files && files.length > 0) {
-      console.log('Files to upload:', files);
-    }
-    
     try {
+      // Upload files and get fileIds
+      let fileIds: string[] = [];
+      if (files && files.length > 0) {
+        const uploadPromises = files.map(async (file) => {
+          const fileData = await file.arrayBuffer();
+          const result = await uploadFile({
+            fileData,
+            fileName: file.name,
+            mimeType: file.type,
+          });
+          return result.fileId;
+        });
+        fileIds = await Promise.all(uploadPromises);
+      }
+      
       if (multiModelMode && multiModelSelection.secondary.length > 0) {
         // Multi-model generation
         await startMultiModelGeneration({
@@ -61,13 +73,15 @@ export default function ThreadPage() {
           prompt: content,
           masterModelId: multiModelSelection.master as ModelId,
           secondaryModelIds: multiModelSelection.secondary as ModelId[],
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
       } else {
         // Single model generation (original behavior)
         await sendMessage({ 
           threadId, 
           prompt: content,
-          modelId: selectedModel as ModelId
+          modelId: selectedModel as ModelId,
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
       }
       
@@ -80,7 +94,7 @@ export default function ThreadPage() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelMode, multiModelSelection, startMultiModelGeneration]);
+  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelMode, multiModelSelection, startMultiModelGeneration, files, uploadFile]);
 
 
 

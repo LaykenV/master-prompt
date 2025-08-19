@@ -26,10 +26,12 @@ add ui for table
 
 //text handling and scrolling
 
-input bar // floating dock? // upload files
+//input bar // upload files
+file handling
 build ui with elite model selector and look
 sidebar that opens on hover
 header from civicly
+floating dock?
 colors and design
 name and logo
 settings page
@@ -44,3 +46,5 @@ rate limiting?
 
 upload files / img?
 img gen?
+
+context7 mcp

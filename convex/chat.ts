@@ -11,6 +11,8 @@ import {
     saveMessage,
     getThreadMetadata,
     extractText,
+    storeFile,
+    getFile,
 } from "@convex-dev/agent";
 import { workflow } from "./workflows";
 
@@ -45,6 +47,7 @@ export const createThread = action({
         title: v.optional(v.string()),
         initialPrompt: v.optional(v.string()),
         modelId: v.optional(MODEL_ID_SCHEMA),
+        fileIds: v.optional(v.array(v.string())),
     },
     returns: v.string(),
     handler: async (ctx, args) => {
@@ -69,6 +72,7 @@ export const createThread = action({
                 userId: userId,
                 prompt: args.initialPrompt,
                 modelId: modelId as ModelId,
+                fileIds: args.fileIds,
             });
         }
         
@@ -146,19 +150,54 @@ export const saveInitialMessage = internalMutation({
         userId: v.id("users"),
         prompt: v.string(),
         modelId: MODEL_ID_SCHEMA,
+        fileIds: v.optional(v.array(v.string())),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, userId, prompt, modelId }) => {
-        const { messageId } = await saveMessage(ctx, components.agent, {
-            threadId,
-            userId,
-            prompt,
-        });
-        await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-            threadId,
-            promptMessageId: messageId,
-            modelId,
-        });
+    handler: async (ctx, { threadId, userId, prompt, modelId, fileIds }) => {
+        // Build message content with files if provided
+        if (fileIds && fileIds.length > 0) {
+            const messageContent = [];
+            
+            // Add file content
+            for (const fileId of fileIds) {
+                const { filePart, imagePart } = await getFile(ctx, components.agent, fileId);
+                messageContent.push(imagePart ?? filePart);
+            }
+            
+            // Add text content
+            if (prompt.trim()) {
+                messageContent.push({ type: "text" as const, text: prompt });
+            }
+            
+            const { messageId } = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                message: {
+                    role: "user",
+                    content: messageContent,
+                },
+                metadata: { fileIds }, // Track file usage
+            });
+
+            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                threadId,
+                promptMessageId: messageId,
+                modelId,
+            });
+        } else {
+            // Regular text-only message
+            const { messageId } = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                prompt,
+            });
+            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                threadId,
+                promptMessageId: messageId,
+                modelId,
+            });
+        }
+        
         return null;
     },
 });
@@ -169,9 +208,10 @@ export const sendMessage = mutation({
         threadId: v.string(),
         prompt: v.string(),
         modelId: v.optional(MODEL_ID_SCHEMA),
+        fileIds: v.optional(v.array(v.string())),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, prompt, modelId }) => {
+    handler: async (ctx, { threadId, prompt, modelId, fileIds }) => {
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
@@ -189,17 +229,51 @@ export const sendMessage = mutation({
         // Get the model to use (provided or current thread model)
         const activeModelId = modelId || await ctx.runQuery(internal.chat.getThreadModelInternal, { threadId });
         
-        const { messageId } = await saveMessage(ctx, components.agent, {
-            threadId,
-            userId,
-            prompt,
-        });
+        // Build message content with files if provided
+        if (fileIds && fileIds.length > 0) {
+            const messageContent = [];
+            
+            // Add file content
+            for (const fileId of fileIds) {
+                const { filePart, imagePart } = await getFile(ctx, components.agent, fileId);
+                messageContent.push(imagePart ?? filePart);
+            }
+            
+            // Add text content
+            if (prompt.trim()) {
+                messageContent.push({ type: "text" as const, text: prompt });
+            }
+            
+            const { messageId } = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                message: {
+                    role: "user",
+                    content: messageContent,
+                },
+                metadata: { fileIds }, // Track file usage
+            });
 
-        await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-            threadId,
-            promptMessageId: messageId,
-            modelId: activeModelId,
-        });
+            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                threadId,
+                promptMessageId: messageId,
+                modelId: activeModelId,
+            });
+        } else {
+            // Regular text-only message
+            const { messageId } = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                prompt,
+            });
+
+            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                threadId,
+                promptMessageId: messageId,
+                modelId: activeModelId,
+            });
+        }
+        
         return null;
     },
 });
@@ -310,19 +384,49 @@ export const startMultiModelGeneration = action({
         prompt: v.string(),
         masterModelId: MODEL_ID_SCHEMA,
         secondaryModelIds: v.array(MODEL_ID_SCHEMA),
+        fileIds: v.optional(v.array(v.string())),
     },
     returns: v.string(), // Returns the workflow ID
-    handler: async (ctx, { threadId, prompt, masterModelId, secondaryModelIds }): Promise<string> => {
+    handler: async (ctx, { threadId, prompt, masterModelId, secondaryModelIds, fileIds }): Promise<string> => {
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
 
-        // Save the user's initial message to the master thread
-        const { messageId } = await saveMessage(ctx, components.agent, {
-            threadId,
-            userId,
-            prompt,
-        });
+        // Save the user's initial message to the master thread with files if provided
+        let messageId: string;
+        if (fileIds && fileIds.length > 0) {
+            const messageContent = [];
+            
+            // Add file content
+            for (const fileId of fileIds) {
+                const { filePart, imagePart } = await getFile(ctx, components.agent, fileId);
+                messageContent.push(imagePart ?? filePart);
+            }
+            
+            // Add text content
+            if (prompt.trim()) {
+                messageContent.push({ type: "text" as const, text: prompt });
+            }
+            
+            const result = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                message: {
+                    role: "user",
+                    content: messageContent,
+                },
+                metadata: { fileIds }, // Track file usage
+            });
+            messageId = result.messageId;
+        } else {
+            // Regular text-only message
+            const result = await saveMessage(ctx, components.agent, {
+                threadId,
+                userId,
+                prompt,
+            });
+            messageId = result.messageId;
+        }
 
         // Start the multi-model generation workflow
         const workflowId: string = await workflow.start(
@@ -335,6 +439,7 @@ export const startMultiModelGeneration = action({
                 masterModelId,
                 secondaryModelIds,
                 userId,
+                fileIds,
             }
         );
 
@@ -371,6 +476,41 @@ export const getMultiModelRun = query({
             .unique();
         
         return run;
+    },
+});
+
+// Upload file action
+export const uploadFile = action({
+    args: {
+        fileData: v.bytes(),
+        fileName: v.string(),
+        mimeType: v.string(),
+        sha256: v.optional(v.string()),
+    },
+    returns: v.object({
+        fileId: v.string(),
+        url: v.string(),
+        storageId: v.string(),
+    }),
+    handler: async (ctx, { fileData, fileName, mimeType, sha256 }) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
+        
+        // fileData is already an ArrayBuffer (v.bytes() maps to ArrayBuffer in Convex)
+        const blob = new Blob([fileData], { type: mimeType });
+        const { file } = await storeFile(
+            ctx,
+            components.agent,
+            blob,
+            fileName,
+            sha256
+        );
+        
+        return {
+            fileId: file.fileId,
+            url: file.url,
+            storageId: file.storageId,
+        };
     },
 });
 

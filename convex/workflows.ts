@@ -2,7 +2,7 @@ import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA } from "./agent";
-import { saveMessage } from "@convex-dev/agent";
+import { saveMessage, getFile } from "@convex-dev/agent";
 import { internalMutation, internalAction } from "./_generated/server";
 
 // Initialize the workflow manager
@@ -19,9 +19,10 @@ export const multiModelGeneration = workflow.define({
     masterModelId: MODEL_ID_SCHEMA,
     secondaryModelIds: v.array(MODEL_ID_SCHEMA),
     userId: v.id("users"),
+    fileIds: v.optional(v.array(v.string())),
   },
   handler: async (step, args): Promise<void> => {
-    const { masterThreadId, masterMessageId, prompt, masterModelId, secondaryModelIds, userId } = args;
+    const { masterThreadId, masterMessageId, prompt, masterModelId, secondaryModelIds, userId, fileIds } = args;
 
     // Step 1: Create sub-threads for ALL models (including master)
     const allModelIds = [masterModelId, ...secondaryModelIds];
@@ -55,6 +56,7 @@ export const multiModelGeneration = workflow.define({
         prompt,
         userId,
         isMaster: index === 0,
+        fileIds,
       })
     );
     const initialResponses = await Promise.all(initialGenerationTasks);
@@ -145,16 +147,46 @@ export const generateModelResponse = internalAction({
     prompt: v.string(),
     userId: v.id("users"),
     isMaster: v.boolean(),
+    fileIds: v.optional(v.array(v.string())),
   },
   returns: v.string(),
-  handler: async (ctx, { threadId, modelId, prompt, userId }) => {
+  handler: async (ctx, { threadId, modelId, prompt, userId, fileIds }) => {
     try {
       // For ALL models (including master), save the initial prompt message to their sub-thread
-      const { messageId } = await saveMessage(ctx, components.agent, {
-        threadId,
-        userId,
-        prompt,
-      });
+      let messageId: string;
+      if (fileIds && fileIds.length > 0) {
+        const messageContent = [];
+        
+        // Add file content
+        for (const fileId of fileIds) {
+          const { filePart, imagePart } = await getFile(ctx, components.agent, fileId);
+          messageContent.push(imagePart ?? filePart);
+        }
+        
+        // Add text content
+        if (prompt.trim()) {
+          messageContent.push({ type: "text" as const, text: prompt });
+        }
+        
+        const result = await saveMessage(ctx, components.agent, {
+          threadId,
+          userId,
+          message: {
+            role: "user",
+            content: messageContent,
+          },
+          metadata: { fileIds }, // Track file usage
+        });
+        messageId = result.messageId;
+      } else {
+        // Regular text-only message
+        const result = await saveMessage(ctx, components.agent, {
+          threadId,
+          userId,
+          prompt,
+        });
+        messageId = result.messageId;
+      }
 
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);

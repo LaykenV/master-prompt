@@ -25,18 +25,30 @@ export default function NewChatPage() {
     secondary: string[];
   }>({ master: "gpt-4o-mini", secondary: [] });
 
+  const uploadFile = useAction(api.chat.uploadFile);
+
   const onStart = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const content = input.trim();
     if (!content || isCreating || !user?._id) return;
     setIsCreating(true);
     
-    // Log files for now (TODO: integrate with API)
-    if (files && files.length > 0) {
-      console.log('Files to upload:', files);
-    }
-    
     try {
+      // Upload files and get fileIds
+      let fileIds: string[] = [];
+      if (files && files.length > 0) {
+        const uploadPromises = files.map(async (file) => {
+          const fileData = await file.arrayBuffer();
+          const result = await uploadFile({
+            fileData,
+            fileName: file.name,
+            mimeType: file.type,
+          });
+          return result.fileId;
+        });
+        fileIds = await Promise.all(uploadPromises);
+      }
+      
       if (multiModelMode && multiModelSelection.secondary.length > 0) {
         // Multi-model generation: Create thread without initial prompt, then start multi-model workflow
         const threadId = await createThread({ 
@@ -50,6 +62,7 @@ export default function NewChatPage() {
           prompt: content,
           masterModelId: multiModelSelection.master as ModelId,
           secondaryModelIds: multiModelSelection.secondary as ModelId[],
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
         
         router.push(`/chat/${threadId}`);
@@ -58,7 +71,8 @@ export default function NewChatPage() {
         const threadId = await createThread({ 
           title: content.slice(0, 80),
           initialPrompt: content,
-          modelId: selectedModel as ModelId
+          modelId: selectedModel as ModelId,
+          fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
         router.push(`/chat/${threadId}`);
       }
