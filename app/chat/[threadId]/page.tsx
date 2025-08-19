@@ -8,7 +8,7 @@ import { useThreadMessages, optimisticallySendMessage } from "@convex-dev/agent/
 import { ModelPicker } from "@/components/ModelPicker";
 import { ChatMessages } from "@/components/ChatMessages";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MessageInput } from "@/components/message-input";
 import { Users, Send } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
@@ -21,6 +21,7 @@ export default function ThreadPage() {
     optimisticallySendMessage(api.chat.listThreadMessages)
   );
   const [input, setInput] = useState("");
+  const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>();
   const [isSending, setIsSending] = useState(false);
   const [multiModelMode, setMultiModelMode] = useState(false);
@@ -41,10 +42,16 @@ export default function ThreadPage() {
 
   // No explicit pending state; loader is derived from message list
 
-  const handleSend = useCallback(async (text?: string) => {
+  const handleSend = useCallback(async (text?: string, e?: React.FormEvent) => {
+    e?.preventDefault();
     const content = (text ?? input).trim();
     if (!content || isSending || !user?._id) return;
     setIsSending(true);
+    
+    // Log files for now (TODO: integrate with API)
+    if (files && files.length > 0) {
+      console.log('Files to upload:', files);
+    }
     
     try {
       if (multiModelMode && multiModelSelection.secondary.length > 0) {
@@ -64,7 +71,10 @@ export default function ThreadPage() {
         });
       }
       
-      if (!text) setInput("");
+      if (!text) {
+        setInput("");
+        setFiles(null);
+      }
       // Reset selected model after sending (it's now persisted to thread)
       setSelectedModel(undefined);
     } finally {
@@ -109,31 +119,35 @@ export default function ThreadPage() {
         <ChatMessages messages={messages} />
       </div>
       <div className="border-t border-border bg-background p-4">
-        <div className="mx-auto max-w-4xl flex gap-2">
-          <Input
-            className="flex-1 px-4 py-3 text-sm"
-            type="text"
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void handleSend();
-            }}
-            disabled={isSending || !user}
-          />
-          <Button
-            onClick={() => void handleSend()}
-            disabled={isSending || !input.trim() || !user}
-            className="px-6 py-3"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {isSending 
-              ? "Sending..." 
-              : multiModelMode && multiModelSelection.secondary.length > 0 
-                ? `Send to ${1 + multiModelSelection.secondary.length} Models`
-                : "Send"
-            }
-          </Button>
+        <div className="mx-auto max-w-4xl">
+          <form onSubmit={(e) => handleSend(undefined, e)} className="space-y-4">
+            <MessageInput
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Type your message..."
+              allowAttachments={true}
+              files={files}
+              setFiles={setFiles}
+              isGenerating={isSending}
+              disabled={!user}
+              className="min-h-[60px]"
+            />
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={isSending || !input.trim() || !user}
+                className="px-6 py-3"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {isSending 
+                  ? "Sending..." 
+                  : multiModelMode && multiModelSelection.secondary.length > 0 
+                    ? `Send to ${1 + multiModelSelection.secondary.length} Models`
+                    : "Send"
+                }
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

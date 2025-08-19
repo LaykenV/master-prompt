@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { MessageInput } from "@/components/message-input";
 import { Users } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
@@ -16,6 +16,7 @@ export default function NewChatPage() {
   const createThread = useAction(api.chat.createThread);
   const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
   const [input, setInput] = useState("");
+  const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
   const [isCreating, setIsCreating] = useState(false);
   const [multiModelMode, setMultiModelMode] = useState(false);
@@ -24,10 +25,17 @@ export default function NewChatPage() {
     secondary: string[];
   }>({ master: "gpt-4o-mini", secondary: [] });
 
-  const onStart = async () => {
+  const onStart = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const content = input.trim();
     if (!content || isCreating || !user?._id) return;
     setIsCreating(true);
+    
+    // Log files for now (TODO: integrate with API)
+    if (files && files.length > 0) {
+      console.log('Files to upload:', files);
+    }
+    
     try {
       if (multiModelMode && multiModelSelection.secondary.length > 0) {
         // Multi-model generation: Create thread without initial prompt, then start multi-model workflow
@@ -56,6 +64,8 @@ export default function NewChatPage() {
       }
     } finally {
       setIsCreating(false);
+      setInput("");
+      setFiles(null);
     }
   };
 
@@ -99,31 +109,33 @@ export default function NewChatPage() {
             />
           </div>
 
-          <div className="flex gap-2">
-            <Input
-              className="flex-1 px-4 py-3 text-sm"
-              type="text"
-              placeholder="Start a new chat..."
+          <form onSubmit={onStart} className="space-y-4">
+            <MessageInput
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void onStart();
-              }}
-              disabled={isCreating || !user}
+              placeholder="Start a new chat..."
+              allowAttachments={true}
+              files={files}
+              setFiles={setFiles}
+              isGenerating={isCreating}
+              disabled={!user}
+              className="min-h-[60px]"
             />
-            <Button
-              onClick={() => void onStart()}
-              disabled={isCreating || !input.trim() || !user}
-              className="px-6 py-3 text-sm font-medium transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {isCreating 
-                ? "Creating..." 
-                : multiModelMode && multiModelSelection.secondary.length > 0 
-                  ? `Start with ${1 + multiModelSelection.secondary.length} Models`
-                  : "Start Chat"
-              }
-            </Button>
-          </div>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={isCreating || !input.trim() || !user}
+                className="px-6 py-3 text-sm font-medium transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {isCreating 
+                  ? "Creating..." 
+                  : multiModelMode && multiModelSelection.secondary.length > 0 
+                    ? `Start with ${1 + multiModelSelection.secondary.length} Models`
+                    : "Start Chat"
+                }
+              </Button>
+            </div>
+          </form>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
