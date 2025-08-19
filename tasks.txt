@@ -24,8 +24,20 @@ add ui for table
 //clean up model name and logo into a config
 //figure out how to track tokens
 
-text handling and scrolling
+//text handling and scrolling
+
+input bar // floating dock? // upload files
 build ui with elite model selector and look
+sidebar that opens on hover
+header from civicly
+colors and design
+name and logo
+settings page
+landing page
+model selector ui
+multi response ui
+perfect markdown rendering and auto scroll and fonts
+
 
 polar? how to handle subs?
 rate limiting?
