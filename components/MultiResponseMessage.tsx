@@ -41,7 +41,7 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
   };
 
   return (
-    <Card className="w-full border-2 border-dashed border-primary/20 bg-muted/30">
+    <Card className="w-full border-2 border-dashed border-primary/20 bg-muted/30 transition-colors hover:bg-muted/40">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ function ModelResponseCard({
   const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
 
   return (
-    <Card className={`${isMaster ? 'border-primary' : 'border-muted'}`}>
+    <Card className={`transition-colors hover:bg-card/80 ${isMaster ? 'border-primary' : 'border-border'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
@@ -181,7 +181,7 @@ function ModelResponseCard({
           ))}
           {shouldShowPendingAssistant && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] rounded-lg p-4 bg-card border mr-12">
+              <div className="max-w-[80%] rounded-lg p-4 bg-card border border-border mr-12">
                 <div className="text-xs opacity-60 mb-1">Assistant</div>
                 <div className="mt-2 flex items-center gap-1">
                   <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
@@ -205,10 +205,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
   return (
     <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
       <div 
-        className={`max-w-[80%] rounded-lg p-4 ${
+        className={`max-w-[80%] rounded-lg p-4 transition-colors ${
           message.role === "user" 
-            ? "bg-primary text-primary-foreground ml-12" 
-            : "bg-card border mr-12"
+            ? "bg-primary text-primary-foreground ml-12 hover:bg-primary/90" 
+            : "bg-card border border-border mr-12 hover:bg-card/80"
         }`}
       >
         <div className="text-xs opacity-60 mb-1">

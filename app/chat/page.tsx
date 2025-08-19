@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Users } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
@@ -99,8 +100,8 @@ export default function NewChatPage() {
           </div>
 
           <div className="flex gap-2">
-            <input
-              className="flex-1 rounded-lg border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            <Input
+              className="flex-1 px-4 py-3 text-sm"
               type="text"
               placeholder="Start a new chat..."
               value={input}
@@ -110,10 +111,10 @@ export default function NewChatPage() {
               }}
               disabled={isCreating || !user}
             />
-            <button
+            <Button
               onClick={() => void onStart()}
               disabled={isCreating || !input.trim() || !user}
-              className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              className="px-6 py-3 text-sm font-medium transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring"
             >
               {isCreating 
                 ? "Creating..." 
@@ -121,17 +122,17 @@ export default function NewChatPage() {
                   ? `Start with ${1 + multiModelSelection.secondary.length} Models`
                   : "Start Chat"
               }
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="font-semibold mb-2">💡 Ask anything</h3>
+          <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
+            <h3 className="font-semibold mb-2 text-card-foreground">💡 Ask anything</h3>
             <p className="text-muted-foreground">Get help with code, writing, research, or creative projects.</p>
           </div>
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="font-semibold mb-2">🚀 Get started quickly</h3>
+          <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
+            <h3 className="font-semibold mb-2 text-card-foreground">🚀 Get started quickly</h3>
             <p className="text-muted-foreground">Simple conversations that adapt to your needs and context.</p>
           </div>
         </div>

@@ -16,7 +16,8 @@
 
 //responses structured. most important, things to consider, crucial things
 //prompt to consider responses
-fix ui for multi response, make user message have hidden prompt prefix, filter secondary threads
+//fix ui for multi response, make user message have hidden prompt prefix, filter secondary threads
+
 final response structured. response + obj to build table for different responses
 add ui for table
 

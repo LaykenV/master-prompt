@@ -125,7 +125,7 @@ export function ModelPicker({
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-72">
+        <DropdownMenuContent align="start" className="w-72 border-border bg-popover">
           <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">
             MASTER MODEL (Primary response)
           </DropdownMenuLabel>
@@ -133,7 +133,7 @@ export function ModelPicker({
             <DropdownMenuItem
               key={`master-${model.id}`}
               onClick={() => handleMasterChange(model.id)}
-              className="flex items-center gap-3 cursor-pointer"
+              className="flex items-center gap-3 cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
             >
               <span className="text-lg">{getIcon(model.id, model.provider)}</span>
               <div className="flex flex-col flex-1">
@@ -161,8 +161,8 @@ export function ModelPicker({
               <DropdownMenuItem
                 key={`secondary-${model.id}`}
                 onClick={() => !isMaster && handleMultiModelToggle(model.id)}
-                className={`flex items-center gap-3 cursor-pointer ${
-                  isMaster ? 'opacity-50 cursor-not-allowed' : ''
+                className={`flex items-center gap-3 transition-colors ${
+                  isMaster ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground'
                 }`}
               >
                 <span className="text-lg">{getIcon(model.id, model.provider)}</span>
@@ -199,12 +199,12 @@ export function ModelPicker({
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="w-56 border-border bg-popover">
         {availableModels.map((model) => (
           <DropdownMenuItem
             key={model.id}
             onClick={() => handleModelChange(model.id)}
-            className="flex items-center gap-3 cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
           >
             <span className="text-lg">{getProviderIcon(model.provider)}</span>
             <div className="flex flex-col">

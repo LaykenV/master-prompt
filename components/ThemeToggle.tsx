@@ -23,7 +23,7 @@ export default function ThemeToggle() {
           onClick={toggle} 
           aria-label="Toggle theme" 
           title="Toggle theme"
-          className="w-full justify-start gap-2"
+          className="w-full justify-start gap-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
         >
           <SunDim className="h-4 w-4" />
           <span className="group-data-[collapsible=icon]:hidden">Toggle Theme</span>
@@ -36,7 +36,7 @@ export default function ThemeToggle() {
         onClick={toggle} 
         aria-label="Toggle theme" 
         title="Toggle theme"
-        className="w-full justify-start gap-2 cursor-pointer"
+        className="w-full justify-start gap-2 cursor-pointer transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
       >
         {resolvedTheme === "dark" ? (
           <>

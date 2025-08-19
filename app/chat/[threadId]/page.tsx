@@ -8,6 +8,7 @@ import { toUIMessages, useThreadMessages, optimisticallySendMessage, useSmoothTe
 import { ModelPicker } from "@/components/ModelPicker";
 import { MultiResponseMessage } from "@/components/MultiResponseMessage";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Users, Send } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
@@ -77,7 +78,7 @@ export default function ThreadPage() {
   return (
     <div className="flex h-full flex-col">
       {/* Header with model picker */}
-      <div className="border-b bg-background p-4">
+      <div className="border-b border-border bg-background p-4">
         <div className="mx-auto max-w-4xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">Chat</h1>
@@ -107,10 +108,10 @@ export default function ThreadPage() {
       <div className="flex-1 overflow-hidden">
         <Messages messages={messages} />
       </div>
-      <div className="border-t bg-background p-4">
+      <div className="border-t border-border bg-background p-4">
         <div className="mx-auto max-w-4xl flex gap-2">
-          <input
-            className="flex-1 rounded-lg border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          <Input
+            className="flex-1 px-4 py-3 text-sm"
             type="text"
             placeholder="Type your message..."
             value={input}
@@ -144,7 +145,7 @@ function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages>
   if (messages.isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-muted-foreground">Loading messages...</div>
+        <div className="text-muted-foreground" role="status" aria-label="Loading messages">Loading messages...</div>
       </div>
     );
   }
@@ -191,7 +192,7 @@ function Messages({ messages }: { messages: ReturnType<typeof useThreadMessages>
         })}
         {shouldShowPendingAssistant && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] rounded-lg p-4 bg-card border mr-12">
+            <div className="max-w-[80%] rounded-lg p-4 bg-card border border-border mr-12">
               <div className="text-xs opacity-60 mb-1">Assistant</div>
               <div className="mt-2 flex items-center gap-1">
                 <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
@@ -237,10 +238,10 @@ function MessageBubble({ message }: { message: UIMessage }) {
     return (
       <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
         <div 
-          className={`max-w-[80%] rounded-lg p-4 ${
+          className={`max-w-[80%] rounded-lg p-4 transition-colors ${
             message.role === "user" 
-              ? "bg-primary text-primary-foreground ml-12" 
-              : "bg-card border mr-12"
+              ? "bg-primary text-primary-foreground ml-12 hover:bg-primary/90" 
+              : "bg-card border border-border mr-12 hover:bg-card/80"
           }`}
         >
           <div className="text-xs opacity-60 mb-1">

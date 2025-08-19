@@ -93,7 +93,7 @@ export default function ChatLayout({
               ) : (
                 <SidebarMenu>
                   {threads === undefined ? (
-                    <div className="text-sm text-muted-foreground px-2 py-4">
+                    <div className="text-sm text-muted-foreground px-2 py-4" role="status" aria-label="Loading chats">
                       Loading chats...
                     </div>
                   ) : threads === null || threads.length === 0 ? (
@@ -115,7 +115,8 @@ export default function ChatLayout({
                           </SidebarMenuButton>
                           <SidebarMenuAction 
                             onClick={() => void deleteThread({ threadId: thread._id })}
-                            className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+                            className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Delete chat: ${thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}`}
                           >
                             <X className="h-3 w-3" />
                             <span className="sr-only">Delete chat</span>

@@ -105,6 +105,24 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Focus styles for better accessibility */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+  
+  /* Smooth transitions for interactive elements */
+  button, input, textarea, select {
+    transition: all 0.2s ease-in-out;
+  }
+  
+  /* Improve text contrast */
+  h1, h2, h3, h4, h5, h6 {
+    color: hsl(var(--foreground));
+    font-weight: 600;
   }
 }
 
@@ -133,5 +151,24 @@
     @apply hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
     @apply focus-visible:ring-2 focus-visible:ring-sidebar-ring;
     @apply group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8;
+  }
+  
+  /* Improved button hover states */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring transition-colors;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-2 focus-visible:ring-ring transition-colors;
+  }
+  
+  /* Card hover effects */
+  .card-hover {
+    @apply transition-colors hover:bg-card/80;
+  }
+  
+  /* Input focus improvements */
+  .input-focus {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring transition-colors;
   }
 }
