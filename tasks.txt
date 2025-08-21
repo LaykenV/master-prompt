@@ -18,7 +18,7 @@
 //prompt to consider responses
 //fix ui for multi response, make user message have hidden prompt prefix, filter secondary threads
 
-finish cleaning colors
+//finish cleaning colors
 
 final response structured. response + obj to build table for different responses
 
@@ -64,3 +64,7 @@ rate limiting?
 
 img gen?
 
+
+
+//retain model selection
+light mode too white 

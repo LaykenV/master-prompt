@@ -45,6 +45,7 @@ type ModelPickerBindings = {
   selectedModel?: string
   onModelChange?: (modelId: string) => void
   onMultiModelChange?: (models: { master: string; secondary: string[] }) => void
+  latestUserMessageId?: string
 }
 
 export function MessageInput({
@@ -55,7 +56,6 @@ export function MessageInput({
   stop,
   isGenerating,
   enableInterrupt = true,
-  // @ts-expect-error extra prop will be stripped when not used
   modelPicker,
   ...props
 }: MessageInputProps) {
@@ -248,7 +248,7 @@ export function MessageInput({
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+              "z-10 w-full grow resize-none rounded-xl border border-input p-3 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 surface-input",
               // extra bottom padding to accommodate floating controls and previews
               showFileList ? "pb-28 pr-3" : "pb-16 pr-3",
               className
@@ -306,6 +306,7 @@ export function MessageInput({
                 selectedModel={bindings.selectedModel}
                 onModelChange={bindings.onModelChange}
                 onMultiModelChange={bindings.onMultiModelChange}
+                latestUserMessageId={bindings.latestUserMessageId}
               />
             )
           })()}

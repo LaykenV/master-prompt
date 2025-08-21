@@ -4,7 +4,7 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
-import { useThreadMessages, optimisticallySendMessage } from "@convex-dev/agent/react";
+import { useThreadMessages, optimisticallySendMessage, toUIMessages } from "@convex-dev/agent/react";
 import { ChatMessages } from "@/components/ChatMessages";
 import { Button } from "@/components/ui/button";
 import { MessageInput } from "@/components/message-input";
@@ -140,6 +140,18 @@ export default function ThreadPage() {
     return { uploading: !!uploadingMap[key] };
   }, [fileKey, uploadingMap]);
 
+  // Determine the latest user message id in this thread to drive model picker hydration logic
+  const latestUserMessageId = React.useMemo(() => {
+    if (!messages.results || messages.results.length === 0) return undefined;
+    const ui = toUIMessages(messages.results);
+    for (let i = ui.length - 1; i >= 0; i -= 1) {
+      if (ui[i].role === "user") {
+        return messages.results[i]?._id as string | undefined;
+      }
+    }
+    return undefined;
+  }, [messages.results]);
+
   const handleSend = useCallback(async (text?: string, e?: React.FormEvent) => {
     e?.preventDefault();
     const content = (text ?? input).trim();
@@ -211,6 +223,7 @@ export default function ThreadPage() {
                 selectedModel,
                 onModelChange: setSelectedModel,
                 onMultiModelChange: setMultiModelSelection,
+                latestUserMessageId,
               }}
             />
           </form>

@@ -151,6 +151,111 @@
 }
 
 @layer utilities {
+  /* Light-mode surface utilities for inputs, triggers, and menus */
+  .surface-input {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.12) 0%,
+        hsl(var(--primary) / 0.05) 100%
+      ),
+      hsl(var(--card));
+    box-shadow:
+      0 8px 20px -12px hsl(var(--primary) / 0.28),
+      0 2px 6px -2px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+
+  .surface-trigger {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.14) 0%,
+        hsl(var(--primary) / 0.08) 100%
+      ),
+      hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.30) !important;
+    box-shadow:
+      inset 0 1px 0 hsl(var(--primary) / 0.20),
+      0 10px 24px -14px hsl(var(--primary) / 0.22),
+      0 4px 10px -6px hsl(var(--foreground) / 0.10);
+  }
+  .surface-trigger:hover {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.18) 0%,
+        hsl(var(--primary) / 0.12) 100%
+      ),
+      hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.38) !important;
+    cursor: pointer;
+  }
+
+  .surface-menu {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.10) 0%,
+        hsl(var(--primary) / 0.05) 100%
+      ),
+      hsl(var(--popover));
+    box-shadow:
+      0 16px 42px -20px hsl(var(--primary) / 0.32),
+      0 8px 22px -10px hsl(var(--foreground) / 0.14),
+      inset 0 1px 0 hsl(var(--primary) / 0.10);
+    border-color: hsl(var(--primary) / 0.25) !important;
+  }
+
+  /* Model picker card styles */
+  .model-card {
+    @apply relative rounded-lg border border-border bg-card p-3 transition-all;
+    box-shadow:
+      0 6px 16px hsl(var(--foreground) / 0.06),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+  .model-card:hover {
+    @apply border-primary/40;
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.10) 0%,
+        hsl(var(--primary) / 0.06) 100%
+      ),
+      hsl(var(--card));
+    box-shadow:
+      0 10px 24px -10px hsl(var(--primary) / 0.28),
+      0 4px 10px -6px hsl(var(--foreground) / 0.12),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .model-card-selected {
+    /* Match user-bubble / new chat aesthetic */
+    @apply border-primary;
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.10) 0%,
+        hsl(var(--primary) / 0.06) 100%
+      ),
+      hsl(var(--card));
+    box-shadow:
+      0 8px 20px -12px hsl(var(--primary) / 0.28),
+      0 2px 6px -2px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .model-card-selected:hover {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.12) 0%,
+        hsl(var(--primary) / 0.08) 100%
+      ),
+      hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.30);
+  }
+  .model-card-wide {
+    @apply p-4;
+  }
   /* Subtle gradients for sidebar and chat surfaces */
   .brand-sidebar [data-slot="sidebar-inner"],
   .pink-sidebar [data-slot="sidebar-inner"] {

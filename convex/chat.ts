@@ -518,6 +518,39 @@ export const getMultiModelRun = query({
     },
 });
 
+// Get the latest multi-model run for a given master thread id
+export const getLatestMultiModelRunForThread = query({
+    args: {
+        threadId: v.string(),
+    },
+    returns: v.union(
+        v.null(),
+        v.object({
+            _id: v.id("multiModelRuns"),
+            _creationTime: v.number(),
+            masterMessageId: v.string(),
+            masterThreadId: v.string(),
+            masterModelId: MODEL_ID_SCHEMA,
+            allRuns: v.array(v.object({
+                modelId: MODEL_ID_SCHEMA,
+                threadId: v.string(),
+                isMaster: v.boolean(),
+            })),
+        })
+    ),
+    handler: async (ctx, { threadId }) => {
+        await authorizeThreadAccess(ctx, threadId);
+
+        const page = await ctx.db
+            .query("multiModelRuns")
+            .withIndex("by_master_thread", (q) => q.eq("masterThreadId", threadId))
+            .order("desc")
+            .take(1);
+
+        return page[0] ?? null;
+    },
+});
+
 // Upload file action
 export const uploadFile = action({
     args: {

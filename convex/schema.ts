@@ -17,5 +17,7 @@ export default defineSchema({
       threadId: v.string(),
       isMaster: v.boolean(),
     })),
-  }).index("by_master_message", ["masterMessageId"]),
+  })
+    .index("by_master_message", ["masterMessageId"]) 
+    .index("by_master_thread", ["masterThreadId"]),
 });
