@@ -192,40 +192,30 @@ export default function ThreadPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header with model picker (transparent to show continuous background) */}
-      <div className="border-b border-border p-4">
-        <div className="mx-auto max-w-4xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold">Chat</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant={multiModelMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMultiModelMode(!multiModelMode)}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Multi-Model
-            </Button>
-            <ModelPicker 
-              threadId={threadId} 
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              multiModelMode={multiModelMode}
-
-              onMultiModelChange={setMultiModelSelection}
-            />
-          </div>
-        </div>
-      </div>
-      
       <div className="flex-1 overflow-hidden">
         <ChatMessages messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
-      <div className="border-t border-border p-4">
+      <div className="p-4">
         <div className="mx-auto max-w-4xl">
           <form onSubmit={(e) => handleSend(undefined, e)} className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <Button
+                variant={multiModelMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMultiModelMode(!multiModelMode)}
+                className="flex items-center gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Multi-Model
+              </Button>
+              <ModelPicker 
+                threadId={threadId} 
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                multiModelMode={multiModelMode}
+                onMultiModelChange={setMultiModelSelection}
+              />
+            </div>
             <MessageInput
               value={input}
               onChange={(e) => setInput(e.target.value)}

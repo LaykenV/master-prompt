@@ -31,7 +31,7 @@ import {
   Sparkles,
   Settings
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -76,8 +76,6 @@ export default function ChatLayout({
             <span className="hidden group-data-[collapsible=icon]:block">+</span>
           </Link>
         </SidebarHeader>
-        
-        <Separator />
         
         <SidebarContent className="flex-1 overflow-hidden">
           <SidebarGroup>
@@ -136,7 +134,6 @@ export default function ChatLayout({
 
         {user && (
           <>
-            <Separator />
             <SidebarFooter>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -169,12 +166,26 @@ export default function ChatLayout({
       </Sidebar>
       
       <SidebarInset className="h-full flex flex-col brand-chat">
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
+        {/* Mobile header */}
+        <header className="md:hidden flex h-16 shrink-0 items-center justify-between gap-2 px-4">
+          <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
+          </div>
+          <div>
+            <Link 
+              href="/chat"
+              className="btn-new-chat w-10 h-10 p-0 flex items-center justify-center"
+            >
+              +
+            </Link>
           </div>
         </header>
+        
+        {/* Desktop floating sidebar trigger */}
+        <div className="hidden md:block absolute top-4 left-4 z-10">
+          <SidebarTrigger className="bg-background/80 backdrop-blur-sm border border-border rounded-md shadow-lg hover:bg-background/90 transition-colors cursor-pointer" />
+        </div>
+        
         <main className="flex-1 overflow-hidden">{children}</main>
       </SidebarInset>
     </SidebarProvider>
