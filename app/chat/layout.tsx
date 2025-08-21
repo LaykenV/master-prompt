@@ -63,7 +63,7 @@ export default function ChatLayout({
   return (
     <SidebarProvider className="h-full">
       <Toaster position="top-center" richColors />
-      <Sidebar variant="inset" collapsible="icon">
+      <Sidebar variant="inset" collapsible="icon" className="brand-sidebar">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">
             <Sparkles className="h-6 w-6 text-primary" />
@@ -170,7 +170,7 @@ export default function ChatLayout({
         )}
       </Sidebar>
       
-      <SidebarInset className="h-full flex flex-col">
+      <SidebarInset className="h-full flex flex-col brand-chat">
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />

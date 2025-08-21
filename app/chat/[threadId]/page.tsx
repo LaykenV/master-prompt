@@ -192,8 +192,8 @@ export default function ThreadPage() {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header with model picker */}
-      <div className="border-b border-border bg-background p-4">
+      {/* Header with model picker (transparent to show continuous background) */}
+      <div className="border-b border-border p-4">
         <div className="mx-auto max-w-4xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">Chat</h1>
@@ -223,7 +223,7 @@ export default function ThreadPage() {
       <div className="flex-1 overflow-hidden">
         <ChatMessages messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
-      <div className="border-t border-border bg-background p-4">
+      <div className="border-t border-border p-4">
         <div className="mx-auto max-w-4xl">
           <form onSubmit={(e) => handleSend(undefined, e)} className="space-y-4">
             <MessageInput

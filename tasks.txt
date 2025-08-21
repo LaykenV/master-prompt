@@ -18,6 +18,8 @@
 //prompt to consider responses
 //fix ui for multi response, make user message have hidden prompt prefix, filter secondary threads
 
+finish cleaning colors
+
 final response structured. response + obj to build table for different responses
 
 add status for each run to schema, update in worflow to show in ui
