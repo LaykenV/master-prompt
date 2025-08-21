@@ -182,23 +182,54 @@
 
   [data-slot="sidebar-inset"].brand-chat,
   [data-slot="sidebar-inset"].pink-chat {
-    background-color: transparent;
+    /* Same background as sidebar */
+    background-color: hsl(var(--sidebar));
     background-image: linear-gradient(
       135deg,
-      hsl(var(--chat-gradient-start)) 0%,
-      hsl(var(--chat-gradient-end)) 100%
+      hsl(var(--sidebar-gradient-start)) 0%,
+      hsl(var(--sidebar-gradient-end)) 100%
     );
-    /* Slightly stronger inner separation in light mode */
+    /* Same styling as sidebar */
+    border-right: 1px solid hsl(var(--sidebar-border));
+    border-radius: 0.75rem;
+    /* Add spacing around like sidebar */
+    margin: 0.5rem;
+    /* Calculate height accounting for margin */
+    height: calc(100vh - 1rem);
+    /* Same shadows as sidebar - stronger light-mode shadows */
     box-shadow:
-      inset 0 1px 0 hsl(var(--foreground) / 0.06),
-      inset 0 -1px 0 hsl(var(--foreground) / 0.05);
+      0 10px 25px hsl(var(--foreground) / 0.08),
+      0 2px 8px hsl(var(--foreground) / 0.12),
+      0 8px 20px hsl(var(--primary) / 0.08),
+      inset 0 1px 0 hsl(var(--foreground) / 0.06);
+    /* Ensure it's non-scrollable */
+    overflow: hidden;
   }
 
   .dark [data-slot="sidebar-inset"].brand-chat,
   .dark [data-slot="sidebar-inset"].pink-chat {
+    /* Same background as sidebar in dark mode */
+    background-color: hsl(var(--sidebar));
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--sidebar-gradient-start)) 0%,
+      hsl(var(--sidebar-gradient-end)) 100%
+    );
+    /* Same styling as sidebar */
+    border-right: 1px solid hsl(var(--sidebar-border));
+    border-radius: 0.75rem;
+    /* Add spacing around like sidebar */
+    margin: 0.5rem;
+    /* Calculate height accounting for margin */
+    height: calc(100vh - 1rem);
+    /* Same shadows as sidebar - subtler dark mode shadows */
     box-shadow:
-      inset 0 1px 0 hsl(var(--foreground) / 0.04),
-      inset 0 -1px 0 hsl(var(--foreground) / 0.03);
+      0 10px 25px hsl(var(--foreground) / 0.04),
+      0 2px 8px hsl(var(--foreground) / 0.06),
+      0 8px 20px hsl(var(--primary) / 0.06),
+      inset 0 1px 0 hsl(var(--foreground) / 0.05);
+    /* Ensure it's non-scrollable */
+    overflow: hidden;
   }
 
   /* Mobile sidebar sheet */
@@ -211,9 +242,22 @@
     );
   }
 
-  /* Ensure html and body take full height */
+  /* Ensure html and body take full height and prevent scrolling */
   html, body {
     height: 100%;
+    overflow: hidden;
+  }
+
+  /* Lock the main layout container */
+  [data-sidebar-provider] {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Lock the root app container */
+  #__next, [data-nextjs-scroll-focus-boundary] {
+    height: 100%;
+    overflow: hidden;
   }
 
   /* Custom scrollbar for webkit browsers */
