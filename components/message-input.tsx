@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { FilePreview } from "@/components/file-preview"
 import { InterruptPrompt } from "@/components/interrupt-prompt"
 import { toast } from "sonner"
+import { ModelPicker } from "@/components/ModelPicker"
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -32,9 +33,19 @@ interface MessageInputWithAttachmentsProps extends MessageInputBaseProps {
   getFileUploadStatus?: (file: File) => { uploading: boolean }
 }
 
-type MessageInputProps =
+type MessageInputProps = (
   | MessageInputWithoutAttachmentProps
   | MessageInputWithAttachmentsProps
+) & {
+  modelPicker?: ModelPickerBindings
+}
+
+type ModelPickerBindings = {
+  threadId?: string
+  selectedModel?: string
+  onModelChange?: (modelId: string) => void
+  onMultiModelChange?: (models: { master: string; secondary: string[] }) => void
+}
 
 export function MessageInput({
   placeholder = "Ask AI...",
@@ -44,6 +55,8 @@ export function MessageInput({
   stop,
   isGenerating,
   enableInterrupt = true,
+  // @ts-expect-error extra prop will be stripped when not used
+  modelPicker,
   ...props
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -226,7 +239,7 @@ export function MessageInput({
 
 
 
-      <div className="relative flex w-full items-center space-x-2">
+      <div className="relative flex w-full items-center">
         <div className="relative flex-1">
           <textarea
             aria-label="Write your prompt here"
@@ -235,8 +248,9 @@ export function MessageInput({
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 pr-24 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-              showFileList && "pb-16",
+              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+              // extra bottom padding to accommodate floating controls and previews
+              showFileList ? "pb-28 pr-3" : "pb-16 pr-3",
               className
             )}
             {...(props.allowAttachments
@@ -251,9 +265,8 @@ export function MessageInput({
                   return rest
                 })())}
           />
-
           {props.allowAttachments && (
-            <div className="absolute inset-x-3 bottom-0 z-20 overflow-x-scroll py-3">
+            <div className="absolute inset-x-3 bottom-12 z-20 overflow-x-scroll py-2">
               <div className="flex space-x-3">
                 <AnimatePresence mode="popLayout">
                   {props.files?.map((file) => {
@@ -266,10 +279,7 @@ export function MessageInput({
                         onRemove={() => {
                           props.setFiles((files) => {
                             if (!files) return null
-
-                            const filtered = Array.from(files).filter(
-                              (f) => f !== file
-                            )
+                            const filtered = Array.from(files).filter((f) => f !== file)
                             if (filtered.length === 0) return null
                             return filtered
                           })
@@ -284,44 +294,63 @@ export function MessageInput({
         </div>
       </div>
 
-      <div className="absolute right-3 top-3 z-20 flex gap-2">
-        {props.allowAttachments && (
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
-            aria-label="Attach a file"
-            onClick={async () => {
-              const files = await showFileUploadDialog()
-              addFiles(files)
-            }}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-        )}
-
-        {isGenerating && stop ? (
-          <Button
-            type="button"
-            size="icon"
-            className="h-8 w-8"
-            aria-label="Stop generating"
-            onClick={stop}
-          >
-            <Square className="h-3 w-3 animate-pulse" fill="currentColor" />
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            size="icon"
-            className="h-8 w-8 transition-opacity"
-            aria-label="Send message"
-            disabled={props.value === "" || isGenerating}
-          >
-            <ArrowUp className="h-5 w-5" />
-          </Button>
-        )}
+      {/* Floating bottom controls */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex items-center justify-between">
+        <div className="pointer-events-auto">
+          {(() => {
+            const bindings = (modelPicker as ModelPickerBindings | undefined)
+            if (!bindings) return null
+            return (
+              <ModelPicker
+                threadId={bindings.threadId}
+                selectedModel={bindings.selectedModel}
+                onModelChange={bindings.onModelChange}
+                onMultiModelChange={bindings.onMultiModelChange}
+              />
+            )
+          })()}
+        </div>
+        <div className="pointer-events-auto flex items-center gap-2">
+          {props.allowAttachments && (
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-8 w-8"
+              aria-label="Attach a file"
+              onClick={async () => {
+                const files = await showFileUploadDialog()
+                addFiles(files)
+              }}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          )}
+          {isGenerating && stop ? (
+            <Button
+              type="button"
+              size="icon"
+              className="h-9 w-9 btn-new-chat-compact"
+              aria-label="Stop generating"
+              onClick={stop}
+            >
+              <Square className="h-3.5 w-3.5" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              className={cn(
+                "h-9 w-9 transition-opacity",
+                "btn-new-chat-compact"
+              )}
+              aria-label="Send message"
+              disabled={props.value === "" || isGenerating}
+            >
+              <ArrowUp className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {props.allowAttachments && <FileUploadOverlay isDragging={isDragging} />}

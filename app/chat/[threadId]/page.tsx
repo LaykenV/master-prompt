@@ -5,11 +5,9 @@ import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { useThreadMessages, optimisticallySendMessage } from "@convex-dev/agent/react";
-import { ModelPicker } from "@/components/ModelPicker";
 import { ChatMessages } from "@/components/ChatMessages";
 import { Button } from "@/components/ui/button";
 import { MessageInput } from "@/components/message-input";
-import { Users } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
 export default function ThreadPage() {
@@ -24,7 +22,6 @@ export default function ThreadPage() {
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>();
   const [isSending, setIsSending] = useState(false);
-  const [multiModelMode, setMultiModelMode] = useState(false);
   const [multiModelSelection, setMultiModelSelection] = useState<{
     master: string;
     secondary: string[];
@@ -157,7 +154,7 @@ export default function ThreadPage() {
         fileIds = await Promise.all(uploadPromises);
       }
       
-      if (multiModelMode && multiModelSelection.secondary.length > 0) {
+      if (multiModelSelection.secondary.length > 0) {
         // Multi-model generation
         await startMultiModelGeneration({
           threadId,
@@ -185,7 +182,7 @@ export default function ThreadPage() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelMode, multiModelSelection, startMultiModelGeneration, files, ensureUploadTask]);
+  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelSelection, startMultiModelGeneration, files, ensureUploadTask]);
 
 
 
@@ -198,24 +195,6 @@ export default function ThreadPage() {
       <div className="p-4">
         <div className="mx-auto max-w-4xl">
           <form onSubmit={(e) => handleSend(undefined, e)} className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <Button
-                variant={multiModelMode ? "default" : "outline"}
-                size="sm"
-                onClick={() => setMultiModelMode(!multiModelMode)}
-                className="flex items-center gap-2"
-              >
-                <Users className="h-4 w-4" />
-                Multi-Model
-              </Button>
-              <ModelPicker 
-                threadId={threadId} 
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                multiModelMode={multiModelMode}
-                onMultiModelChange={setMultiModelSelection}
-              />
-            </div>
             <MessageInput
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -227,6 +206,12 @@ export default function ThreadPage() {
               isGenerating={isSending}
               disabled={!user}
               className="min-h-[60px]"
+              modelPicker={{
+                threadId,
+                selectedModel,
+                onModelChange: setSelectedModel,
+                onMultiModelChange: setMultiModelSelection,
+              }}
             />
           </form>
         </div>

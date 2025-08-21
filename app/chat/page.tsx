@@ -4,10 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ModelPicker } from "@/components/ModelPicker";
-import { Button } from "@/components/ui/button";
 import { MessageInput } from "@/components/message-input";
-import { Users } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
 export default function NewChatPage() {
@@ -23,7 +20,6 @@ export default function NewChatPage() {
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
   const [isCreating, setIsCreating] = useState(false);
-  const [multiModelMode, setMultiModelMode] = useState(false);
   const [multiModelSelection, setMultiModelSelection] = useState<{
     master: string;
     secondary: string[];
@@ -99,7 +95,7 @@ export default function NewChatPage() {
     setIsCreating(true);
     
     try {
-      if (multiModelMode && multiModelSelection.secondary.length > 0) {
+      if (multiModelSelection.secondary.length > 0) {
         // Create thread immediately and navigate, then run uploads + generation in background
         const threadId = await createThread({ 
           title: content.slice(0, 80),
@@ -171,43 +167,41 @@ export default function NewChatPage() {
 
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-8">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Welcome to Master Prompt</h1>
-          <p className="text-muted-foreground">
-            Start a conversation with our AI assistant. Ask questions, get help, or just chat.
-          </p>
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">
+          <div className="mx-auto max-w-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold text-foreground">Welcome to Master Prompt</h1>
+              <p className="text-muted-foreground">
+                Start a conversation with our AI assistant. Ask questions, get help, or just chat.
+              </p>
+            </div>
+
+            {!user && (
+              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
+                <p className="text-sm text-destructive">
+                  Please sign in to start a new chat.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
+                <h3 className="font-semibold mb-2 text-card-foreground">💡 Ask anything</h3>
+                <p className="text-muted-foreground">Get help with code, writing, research, or creative projects.</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
+                <h3 className="font-semibold mb-2 text-card-foreground">🚀 Get started quickly</h3>
+                <p className="text-muted-foreground">Simple conversations that adapt to your needs and context.</p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {!user && (
-          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">
-              Please sign in to start a new chat.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {/* Multi-Model Toggle and Model Selector */}
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant={multiModelMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setMultiModelMode(!multiModelMode)}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Multi-Model
-            </Button>
-            <ModelPicker 
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
-              multiModelMode={multiModelMode}
-              onMultiModelChange={setMultiModelSelection}
-            />
-          </div>
-
+      <div className="p-4">
+        <div className="mx-auto max-w-4xl">
           <form onSubmit={onStart} className="space-y-4">
             <MessageInput
               value={input}
@@ -220,19 +214,13 @@ export default function NewChatPage() {
               isGenerating={isCreating}
               disabled={!user}
               className="min-h-[60px]"
+              modelPicker={{
+                selectedModel,
+                onModelChange: setSelectedModel,
+                onMultiModelChange: setMultiModelSelection,
+              }}
             />
           </form>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
-            <h3 className="font-semibold mb-2 text-card-foreground">💡 Ask anything</h3>
-            <p className="text-muted-foreground">Get help with code, writing, research, or creative projects.</p>
-          </div>
-          <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
-            <h3 className="font-semibold mb-2 text-card-foreground">🚀 Get started quickly</h3>
-            <p className="text-muted-foreground">Simple conversations that adapt to your needs and context.</p>
-          </div>
         </div>
       </div>
     </div>
