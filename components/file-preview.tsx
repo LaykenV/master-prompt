@@ -59,7 +59,7 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
+        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
@@ -70,13 +70,13 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
           {previewUrl ? (
             <img
               alt={`Attachment ${file.name}`}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
+              className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image object-cover"
               src={previewUrl}
             />
           ) : (
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted" />
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image" />
           )}
-          <span className="w-full truncate text-muted-foreground">
+          <span className="w-full truncate text-foreground/80">
             {file.name}
           </span>
         </div>
@@ -123,19 +123,19 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
+        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: "100%" }}
       >
         <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted p-0.5">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image p-1">
             <div className="h-full w-full overflow-hidden text-[6px] leading-none text-muted-foreground">
               {preview || "Loading..."}
             </div>
           </div>
-          <span className="w-full truncate text-muted-foreground">
+          <span className="w-full truncate text-foreground/80">
             {file.name}
           </span>
         </div>
@@ -169,17 +169,17 @@ const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
+        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: "100%" }}
       >
         <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted">
-            <FileIcon className="h-6 w-6 text-foreground" />
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image">
+            <FileIcon className="h-7 w-7 text-foreground" />
           </div>
-          <span className="w-full truncate text-muted-foreground">
+          <span className="w-full truncate text-foreground/80">
             {file.name}
           </span>
         </div>
@@ -233,10 +233,8 @@ const UploadedFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <div 
         ref={ref}
-        className={`flex items-center space-x-3 p-3 rounded-lg border max-w-sm ${
-          isUserMessage 
-            ? "bg-primary/10 border-primary/20" 
-            : "bg-muted/50 border-border"
+        className={`flex items-center space-x-3 p-3 rounded-lg max-w-sm attachment-card ${
+          isUserMessage ? "attachment-card-user" : ""
         }`}
       >
         <div className="flex-shrink-0">

@@ -403,3 +403,66 @@
       hsl(var(--sidebar));
   }
 }
+
+/* Chat message styling and attachments */
+@layer utilities {
+  .user-bubble {
+    color: hsl(var(--foreground));
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.06) 0%,
+        hsl(var(--primary) / 0.03) 100%
+      ),
+      hsl(var(--card));
+    border: 1px solid hsl(var(--primary) / 0.20);
+    box-shadow:
+      0 8px 20px -12px hsl(var(--primary) / 0.28),
+      0 2px 6px -2px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .user-bubble:hover {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.08) 0%,
+        hsl(var(--primary) / 0.04) 100%
+      ),
+      hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.25);
+  }
+
+  .assistant-text { font-size: 1rem; line-height: 1.85; color: hsl(var(--foreground)); }
+
+  .attachment-card {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--accent) / 0.10) 0%,
+        hsl(var(--accent) / 0.06) 100%
+      );
+    border: 1px solid hsl(var(--border));
+    box-shadow:
+      0 8px 20px hsl(var(--foreground) / 0.06),
+      inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  }
+  .attachment-card-user {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.10) 0%,
+        hsl(var(--primary) / 0.06) 100%
+      );
+    border: 1px solid hsl(var(--primary) / 0.25);
+  }
+  .attachment-image {
+    box-shadow:
+      0 10px 24px hsl(var(--foreground) / 0.10),
+      0 2px 8px hsl(var(--foreground) / 0.12);
+    border: 1px solid hsl(var(--border));
+  }
+
+  .chat-content {
+    padding-top: 1rem;
+  }
+}

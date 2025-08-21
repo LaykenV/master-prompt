@@ -18,24 +18,51 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const fileParts = message.parts.filter(part => part.type === "file");
   const hasFiles = fileParts.length > 0;
   
-  return (
-    <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-      <div 
-        className={`max-w-[80%] rounded-lg p-4 transition-colors ${
-          message.role === "user" 
-            ? "bg-primary text-primary-foreground ml-12 hover:bg-primary/90" 
-            : "bg-card border border-border mr-12 hover:bg-card/80"
-        }`}
-      >
-        <div className="text-xs opacity-60 mb-1">
-          {message.role === "user" ? "You" : "Assistant"}
+  // Assistant: plain text, no bubble
+  if (message.role === "assistant") {
+    return (
+      <div className="flex justify-start">
+        <div className="assistant-text w-full">
+          {/* Assistant attachments (no bubble) */}
+          {hasFiles && (
+            <div className="mb-3 space-y-2">
+              {fileParts.map((part, index) => {
+                const filePart = part as { data?: string; filename?: string; mimeType?: string };
+                return (
+                  <FilePreview
+                    key={`${message.key}-file-${index}`}
+                    url={filePart.data}
+                    fileName={filePart.filename || ""}
+                    mimeType={filePart.mimeType}
+                  />
+                );
+              })}
+            </div>
+          )}
+          <MarkdownRenderer>
+            {visibleText}
+          </MarkdownRenderer>
+          {message.status === "streaming" && (
+            <div className="mt-2 flex items-center gap-1">
+              <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
+              <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
+              <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
+            </div>
+          )}
         </div>
-        
-        {/* Render file attachments */}
+      </div>
+    );
+  }
+
+  // User bubble with subtle gradient and centered feel
+  return (
+    <div className="flex justify-end">
+      <div 
+        className="user-bubble ml-12 max-w-[68%] rounded-lg p-3.5 transition-colors leading-relaxed tracking-[0.005em]"
+      >
         {hasFiles && (
           <div className="mb-3 space-y-2">
             {fileParts.map((part, index) => {
-              // Type assertion for file parts that have these properties
               const filePart = part as { data?: string; filename?: string; mimeType?: string };
               return (
                 <FilePreview
@@ -43,20 +70,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   url={filePart.data}
                   fileName={filePart.filename || ""}
                   mimeType={filePart.mimeType}
-                  isUserMessage={message.role === "user"}
+                  isUserMessage
                 />
               );
             })}
           </div>
         )}
-        
-        {/* Render text content */}
+
         {(textParts.length > 0 || !hasFiles) && (
           <MarkdownRenderer>
             {visibleText}
           </MarkdownRenderer>
         )}
-        
+
         {message.status === "streaming" && (
           <div className="mt-2 flex items-center gap-1">
             <div className="h-1 w-1 rounded-full bg-current animate-pulse" />

@@ -21,6 +21,7 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
   
   // Track streaming status for better auto-scroll dependency
   const isStreaming = uiMessages.some(m => m.status === "streaming");
+  const isAssistantStreaming = uiMessages.some(m => m.role === "assistant" && m.status === "streaming");
   const messageCount = uiMessages.length;
   
   const {
@@ -73,7 +74,7 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
     return -1;
   })();
   const hasAssistantAfterLastUser = lastUserIndex !== -1 && uiMessages.some((m, idx) => idx > lastUserIndex && m.role === "assistant");
-  const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
+  const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser && !isAssistantStreaming;
   
   return (
     <div className="relative h-full">
@@ -81,9 +82,9 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
         ref={containerRef}
         onScroll={handleScroll}
         onTouchStart={handleTouchStart}
-        className="h-full overflow-auto p-4 custom-scrollbar"
+        className="h-full overflow-auto p-4 pt-6 custom-scrollbar"
       >
-        <div className="mx-auto max-w-4xl space-y-4">
+        <div className="mx-auto max-w-3xl space-y-12 chat-content">
           {/* Show pending user skeleton above real messages if needed (very brief overlap window) */}
           {pendingFromRedirect && (
             <UserPendingSkeleton hasFiles={!!pendingFromRedirect.hasFiles} />
@@ -103,12 +104,11 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
           })}
           {shouldShowPendingAssistant && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] rounded-lg p-4 bg-card border border-border mr-12">
-                <div className="text-xs opacity-60 mb-1">Assistant</div>
-                <div className="mt-2 flex items-center gap-1">
-                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" />
-                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.2s" }} />
-                  <div className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: "0.4s" }} />
+              <div className="mr-12 max-w-[80%]">
+                <div className="inline-flex items-center gap-2 rounded-2xl px-4 py-3">
+                  <div className="h-3 w-3 rounded-full bg-primary animate-pulse" />
+                  <div className="h-3 w-3 rounded-full bg-primary/80 animate-pulse" style={{ animationDelay: "0.18s" }} />
+                  <div className="h-3 w-3 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "0.36s" }} />
                 </div>
               </div>
             </div>
@@ -119,12 +119,12 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
       {!shouldAutoScroll && (
         <Button
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-4 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 user-bubble rounded-xl px-4 py-2.5 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-2 cursor-pointer"
           size="sm"
-          variant="secondary"
+          variant="ghost"
         >
           <ChevronDown className="h-4 w-4" />
-          Scroll to Bottom
+          Scroll to bottom
         </Button>
       )}
     </div>
@@ -157,8 +157,7 @@ function MessageWithMultiModel({ message, messageId }: { message: UIMessage; mes
 function UserPendingSkeleton({ hasFiles }: { hasFiles?: boolean }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[80%] rounded-lg p-4 bg-primary text-primary-foreground ml-12">
-        <div className="text-xs opacity-60 mb-1">You</div>
+      <div className="user-bubble ml-12 max-w-[72%] rounded-xl p-4">
         {hasFiles && (
           <div className="mb-3 space-y-2">
             <Skeleton className="h-24 w-56" />
@@ -168,7 +167,7 @@ function UserPendingSkeleton({ hasFiles }: { hasFiles?: boolean }) {
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-2/3" />
         </div>
-        <div className="mt-3 flex justify-center">
+        <div className="mt-3 flex justify-center opacity-80">
           <Loader2 className="h-4 w-4 animate-spin" />
         </div>
       </div>
