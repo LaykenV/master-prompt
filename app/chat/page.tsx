@@ -1,8 +1,8 @@
 "use client";
 
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModelPicker } from "@/components/ModelPicker";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,10 @@ export default function NewChatPage() {
   const user = useQuery(api.chat.getUser);
   const createThread = useAction(api.chat.createThread);
   const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
+  const generateUploadUrl = useMutation(api.chat.generateUploadUrl);
+  const registerUploadedFile = useAction(api.chat.registerUploadedFile);
+  const uploadFileSmall = useAction(api.chat.uploadFile);
+  const sendMessageMutation = useMutation(api.chat.sendMessage);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
@@ -25,7 +29,68 @@ export default function NewChatPage() {
     secondary: string[];
   }>({ master: "gpt-4o-mini", secondary: [] });
 
-  const uploadFile = useAction(api.chat.uploadFile);
+  // -------- Pre-upload files to minimize send-time latency --------
+  const SMALL_FILE_LIMIT = 800 * 1024; // ~0.8MB safe under Convex v.bytes limits
+  const uploadTasksRef = React.useRef(new Map<string, Promise<string>>());
+  const [uploadingMap, setUploadingMap] = React.useState<Record<string, boolean>>({});
+  const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
+
+  const ensureUploadTask = React.useCallback((file: File): Promise<string> => {
+    const key = fileKey(file);
+    const existing = uploadTasksRef.current.get(key);
+    if (existing) return existing;
+
+    const task = (async () => {
+      setUploadingMap((prev) => ({ ...prev, [key]: true }));
+      if (file.size <= SMALL_FILE_LIMIT) {
+        const fileData = await file.arrayBuffer();
+        const result = await uploadFileSmall({
+          fileData,
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+        });
+        return result.fileId;
+      }
+
+      const postUrl = await generateUploadUrl({});
+      const res = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      const { storageId } = await res.json();
+      const { fileId } = await registerUploadedFile({
+        storageId,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+      });
+      return fileId;
+    })();
+
+    uploadTasksRef.current.set(key, task);
+    task.finally(() => {
+      setUploadingMap((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      uploadTasksRef.current.delete(key);
+    });
+    return task;
+  }, [uploadFileSmall, generateUploadUrl, registerUploadedFile]);
+
+  // Kick off uploads as soon as files are attached
+  React.useEffect(() => {
+    if (!files || files.length === 0) return;
+    for (const file of files) {
+      void ensureUploadTask(file);
+    }
+  }, [files, ensureUploadTask]);
+
+  const getFileUploadStatus = React.useCallback((file: File) => {
+    const key = fileKey(file);
+    return { uploading: !!uploadingMap[key] };
+  }, [uploadingMap]);
 
   const onStart = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -34,47 +99,49 @@ export default function NewChatPage() {
     setIsCreating(true);
     
     try {
-      // Upload files and get fileIds
-      let fileIds: string[] = [];
-      if (files && files.length > 0) {
-        const uploadPromises = files.map(async (file) => {
-          const fileData = await file.arrayBuffer();
-          const result = await uploadFile({
-            fileData,
-            fileName: file.name,
-            mimeType: file.type,
-          });
-          return result.fileId;
-        });
-        fileIds = await Promise.all(uploadPromises);
-      }
-      
       if (multiModelMode && multiModelSelection.secondary.length > 0) {
-        // Multi-model generation: Create thread without initial prompt, then start multi-model workflow
+        // Create thread immediately and navigate, then run uploads + generation in background
         const threadId = await createThread({ 
           title: content.slice(0, 80),
           modelId: multiModelSelection.master as ModelId
         });
-        
-        // Start multi-model generation
-        await startMultiModelGeneration({
-          threadId,
-          prompt: content,
-          masterModelId: multiModelSelection.master as ModelId,
-          secondaryModelIds: multiModelSelection.secondary as ModelId[],
-          fileIds: fileIds.length > 0 ? fileIds : undefined,
-        });
-        
         router.push(`/chat/${threadId}`);
+
+        void (async () => {
+          let fileIds: string[] = [];
+          if (files && files.length > 0) {
+            const uploadPromises = files.map((file) => ensureUploadTask(file));
+            fileIds = await Promise.all(uploadPromises);
+          }
+          await startMultiModelGeneration({
+            threadId,
+            prompt: content,
+            masterModelId: multiModelSelection.master as ModelId,
+            secondaryModelIds: multiModelSelection.secondary as ModelId[],
+            fileIds: fileIds.length > 0 ? fileIds : undefined,
+          });
+        })();
       } else {
-        // Single model generation (original behavior)
+        // Single model: create thread and navigate immediately; send message in background
         const threadId = await createThread({ 
           title: content.slice(0, 80),
-          initialPrompt: content,
           modelId: selectedModel as ModelId,
-          fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
         router.push(`/chat/${threadId}`);
+
+        void (async () => {
+          let fileIds: string[] = [];
+          if (files && files.length > 0) {
+            const uploadPromises = files.map((file) => ensureUploadTask(file));
+            fileIds = await Promise.all(uploadPromises);
+          }
+          await sendMessageMutation({
+            threadId,
+            prompt: content,
+            modelId: selectedModel as ModelId,
+            fileIds: fileIds.length > 0 ? fileIds : undefined,
+          });
+        })();
       }
     } finally {
       setIsCreating(false);
@@ -131,6 +198,7 @@ export default function NewChatPage() {
               allowAttachments={true}
               files={files}
               setFiles={setFiles}
+              getFileUploadStatus={getFileUploadStatus}
               isGenerating={isCreating}
               disabled={!user}
               className="min-h-[60px]"

@@ -27,7 +27,11 @@ add ui for table
 //text handling and scrolling
 
 //input bar // upload files
-file handling
+//file handling
+
+deploy to test mobile ui
+test new middleware
+
 build ui with elite model selector and look
 sidebar that opens on hover
 header from civicly
@@ -38,13 +42,16 @@ settings page
 landing page
 model selector ui
 multi response ui
+
+test everything
+add other models
 perfect markdown rendering and auto scroll and fonts
 
+auth migration?
 
-polar? how to handle subs?
+
+polar? how to handle subs and token tracking?
 rate limiting?
 
-upload files / img?
 img gen?
 
-context7 mcp

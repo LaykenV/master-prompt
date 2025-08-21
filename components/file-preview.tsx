@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react"
 import { motion } from "framer-motion"
-import { FileIcon, X, Download } from "lucide-react"
+import { FileIcon, X, Download, Loader2 } from "lucide-react"
 
 interface FilePreviewProps {
   file?: File
@@ -11,6 +11,7 @@ interface FilePreviewProps {
   mimeType?: string
   isUserMessage?: boolean
   onRemove?: () => void
+  isUploading?: boolean
 }
 
 export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
@@ -43,7 +44,16 @@ export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 FilePreview.displayName = "FilePreview"
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => {
+    const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+    useEffect(() => {
+      if (!file) return
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    }, [file])
     if (!file) return null;
     
     return (
@@ -57,15 +67,25 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
       >
         <div className="flex w-full items-center space-x-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt={`Attachment ${file.name}`}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
-            src={URL.createObjectURL(file)}
-          />
+          {previewUrl ? (
+            <img
+              alt={`Attachment ${file.name}`}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
+              src={previewUrl}
+            />
+          ) : (
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted" />
+          )}
           <span className="w-full truncate text-muted-foreground">
             {file.name}
           </span>
         </div>
+
+        {isUploading ? (
+          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : null}
 
         {onRemove ? (
           <button
@@ -84,7 +104,7 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 ImageFilePreview.displayName = "ImageFilePreview"
 
 const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => {
     const [preview, setPreview] = React.useState<string>("")
 
     useEffect(() => {
@@ -120,6 +140,12 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
           </span>
         </div>
 
+        {isUploading ? (
+          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : null}
+
         {onRemove ? (
           <button
             className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
@@ -137,7 +163,7 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 TextFilePreview.displayName = "TextFilePreview"
 
 const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove }, ref) => {
+  ({ file, onRemove, isUploading }, ref) => {
     if (!file) return null;
     
     return (
@@ -157,6 +183,12 @@ const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
             {file.name}
           </span>
         </div>
+
+        {isUploading ? (
+          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : null}
 
         {onRemove ? (
           <button

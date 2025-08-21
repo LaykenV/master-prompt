@@ -28,6 +28,7 @@ interface MessageInputWithAttachmentsProps extends MessageInputBaseProps {
   allowAttachments: true
   files: File[] | null
   setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
+  getFileUploadStatus?: (file: File) => { uploading: boolean }
 }
 
 type MessageInputProps =
@@ -53,18 +54,64 @@ export function MessageInput({
     }
   }, [isGenerating])
 
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB client-side cap
+  // Strict allow/deny lists to avoid wildcard matches like text/xml or image/heic
+  const ALLOWED_MIME_TYPES: Array<string> = [
+    "application/pdf",
+    "application/json",
+    "text/plain",
+    "text/markdown",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+  ];
+  const ALLOWED_EXTENSIONS: Array<string> = [
+    "pdf",
+    "json",
+    "txt",
+    "md",
+    "markdown",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "webp",
+  ];
+  const BLOCKED_MIME_TYPES: Array<string> = [
+    "application/xml",
+    "text/xml",
+    "image/heic",
+    "image/heif",
+  ];
+
+  function isFileTypeAllowed(file: File): boolean {
+    const type = (file.type || "").toLowerCase();
+    const name = (file.name || "").toLowerCase();
+    const ext = name.includes(".") ? (name.split(".").pop() as string) : "";
+    if (BLOCKED_MIME_TYPES.includes(type)) return false;
+    if (ALLOWED_MIME_TYPES.includes(type)) return true;
+    if (ext && ALLOWED_EXTENSIONS.includes(ext)) return true;
+    return false;
+  }
+
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
+      const validated = (files ?? []).filter((f) => {
+        const okSize = f.size <= MAX_FILE_SIZE
+        const okType = isFileTypeAllowed(f)
+        return okSize && okType
+      })
       props.setFiles((currentFiles) => {
         if (currentFiles === null) {
-          return files
+          return validated
         }
 
         if (files === null) {
           return currentFiles
         }
 
-        return [...currentFiles, ...files]
+        return [...currentFiles, ...validated]
       })
     }
   }
@@ -184,7 +231,7 @@ export function MessageInput({
             {...(props.allowAttachments
               ? (() => {
                   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { allowAttachments, files, setFiles, ...rest } = props
+                  const { allowAttachments, files, setFiles, getFileUploadStatus, ...rest } = props
                   return rest
                 })()
               : (() => {
@@ -199,10 +246,12 @@ export function MessageInput({
               <div className="flex space-x-3">
                 <AnimatePresence mode="popLayout">
                   {props.files?.map((file) => {
+                    const uploading = props.allowAttachments && props.getFileUploadStatus ? props.getFileUploadStatus(file).uploading : false
                     return (
                       <FilePreview
                         key={file.name + String(file.lastModified)}
                         file={file}
+                        isUploading={uploading}
                         onRemove={() => {
                           props.setFiles((files) => {
                             if (!files) return null

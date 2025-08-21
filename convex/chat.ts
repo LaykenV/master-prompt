@@ -16,6 +16,45 @@ import {
 } from "@convex-dev/agent";
 import { workflow } from "./workflows";
 
+// Generate a short-lived upload URL for uploading large files directly to Convex storage
+export const generateUploadUrl = mutation({
+    args: {},
+    returns: v.string(),
+    handler: async (ctx) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
+        return await ctx.storage.generateUploadUrl();
+    },
+});
+
+// Register an uploaded file (by storageId) with the Convex Agent file system and return an Agent fileId
+export const registerUploadedFile = action({
+    args: {
+        storageId: v.id("_storage"),
+        fileName: v.string(),
+        mimeType: v.string(),
+        sha256: v.optional(v.string()),
+    },
+    returns: v.object({ fileId: v.string(), url: v.string(), storageId: v.string() }),
+    handler: async (ctx, { storageId, fileName, mimeType, sha256 }) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) throw new Error("Not authenticated");
+
+        const blob = await ctx.storage.get(storageId);
+        if (!blob) throw new Error("Uploaded file blob not found");
+
+        const { file } = await storeFile(
+            ctx,
+            components.agent,
+            blob,
+            fileName,
+            sha256,
+        );
+
+        return { fileId: file.fileId, url: file.url, storageId: file.storageId };
+    },
+});
+
 export const getUser = query({
     args: {},
     handler: async (ctx) => {
