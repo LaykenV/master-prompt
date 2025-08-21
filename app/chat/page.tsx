@@ -77,7 +77,7 @@ export default function NewChatPage() {
       uploadTasksRef.current.delete(key);
     });
     return task;
-  }, [uploadFileSmall, generateUploadUrl, registerUploadedFile]);
+  }, [uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT]);
 
   // Kick off uploads as soon as files are attached
   React.useEffect(() => {
@@ -105,6 +105,15 @@ export default function NewChatPage() {
           title: content.slice(0, 80),
           modelId: multiModelSelection.master as ModelId
         });
+        // Stash a pending message so the thread page can render a skeleton immediately
+        try {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(
+              `pendingMessage:${threadId}`,
+              JSON.stringify({ content, hasFiles: !!(files && files.length > 0), createdAt: Date.now() })
+            );
+          }
+        } catch {}
         router.push(`/chat/${threadId}`);
 
         void (async () => {
@@ -127,6 +136,15 @@ export default function NewChatPage() {
           title: content.slice(0, 80),
           modelId: selectedModel as ModelId,
         });
+        // Stash a pending message so the thread page can render a skeleton immediately
+        try {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(
+              `pendingMessage:${threadId}`,
+              JSON.stringify({ content, hasFiles: !!(files && files.length > 0), createdAt: Date.now() })
+            );
+          }
+        } catch {}
         router.push(`/chat/${threadId}`);
 
         void (async () => {
@@ -203,20 +221,6 @@ export default function NewChatPage() {
               disabled={!user}
               className="min-h-[60px]"
             />
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isCreating || !input.trim() || !user}
-                className="px-6 py-3 text-sm font-medium transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {isCreating 
-                  ? "Creating..." 
-                  : multiModelMode && multiModelSelection.secondary.length > 0 
-                    ? `Start with ${1 + multiModelSelection.secondary.length} Models`
-                    : "Start Chat"
-                }
-              </Button>
-            </div>
           </form>
         </div>
 

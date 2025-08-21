@@ -19,7 +19,13 @@
 //fix ui for multi response, make user message have hidden prompt prefix, filter secondary threads
 
 final response structured. response + obj to build table for different responses
-add ui for table
+
+add status for each run to schema, update in worflow to show in ui
+expand to connect to thread and see messages
+magic ui component to connect cards that show status and can expand
+loading spinners then checks
+before synthesis starts or same time, small fast model call to build table obj
+3 layers, initial responses, debate round, final card + table
 
 //clean up model name and logo into a config
 //figure out how to track tokens
@@ -42,6 +48,7 @@ settings page
 landing page
 model selector ui
 multi response ui
+toast
 
 test everything
 add other models

@@ -10,6 +10,7 @@ import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
 import { Button } from "@/components/ui/button"
 import { FilePreview } from "@/components/file-preview"
 import { InterruptPrompt } from "@/components/interrupt-prompt"
+import { toast } from "sonner"
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -97,11 +98,21 @@ export function MessageInput({
 
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
-      const validated = (files ?? []).filter((f) => {
+      const incoming = files ?? []
+      const validated: Array<File> = []
+      for (const f of incoming) {
         const okSize = f.size <= MAX_FILE_SIZE
         const okType = isFileTypeAllowed(f)
-        return okSize && okType
-      })
+        if (!okSize) {
+          toast.error(`"${f.name}" is too large (max 25MB)`) 
+          continue
+        }
+        if (!okType) {
+          toast.error(`"${f.name}" is not a supported file type`)
+          continue
+        }
+        validated.push(f)
+      }
       props.setFiles((currentFiles) => {
         if (currentFiles === null) {
           return validated

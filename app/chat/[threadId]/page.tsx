@@ -9,7 +9,7 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { ChatMessages } from "@/components/ChatMessages";
 import { Button } from "@/components/ui/button";
 import { MessageInput } from "@/components/message-input";
-import { Users, Send } from "lucide-react";
+import { Users } from "lucide-react";
 import { ModelId } from "@/convex/agent";
 
 export default function ThreadPage() {
@@ -45,6 +45,36 @@ export default function ThreadPage() {
 
   // No explicit pending state; loader is derived from message list
 
+  // Pending message from redirect (saved in sessionStorage by /chat page)
+  const [pendingFromRedirect, setPendingFromRedirect] = React.useState<
+    { content: string; hasFiles?: boolean; createdAt?: number } | null
+  >(null);
+
+  React.useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && threadId) {
+        const raw = window.sessionStorage.getItem(`pendingMessage:${threadId}`);
+        if (raw) {
+          setPendingFromRedirect(JSON.parse(raw));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [threadId]);
+
+  // Clear pending once real messages arrive
+  React.useEffect(() => {
+    if (messages.results && messages.results.length > 0 && pendingFromRedirect) {
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(`pendingMessage:${threadId}`);
+        }
+      } catch {}
+      setPendingFromRedirect(null);
+    }
+  }, [messages.results, pendingFromRedirect, threadId]);
+
   // -------- Pre-upload files to minimize send-time latency --------
   const SMALL_FILE_LIMIT = 800 * 1024; // ~0.8MB safe under Convex v.bytes limits
   const uploadTasksRef = React.useRef(new Map<string, Promise<string>>());
@@ -68,20 +98,16 @@ export default function ThreadPage() {
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
         });
-        console.log("small file upload", result);
         return result.fileId;
       }
 
       const postUrl = await generateUploadUrl({});
-      console.log("postUrl", postUrl);
       const res = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": file.type || "application/octet-stream" },
         body: file,
       });
-      console.log("res", res);
       const { storageId } = await res.json();
-      console.log("storageId", storageId);
       const { fileId } = await registerUploadedFile({
         storageId,
         fileName: file.name,
@@ -108,7 +134,6 @@ export default function ThreadPage() {
   React.useEffect(() => {
     if (!files || files.length === 0) return;
     for (const file of files) {
-      console.log("uploading file", file);
       void ensureUploadTask(file);
     }
   }, [files, ensureUploadTask]);
@@ -196,7 +221,7 @@ export default function ThreadPage() {
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <ChatMessages messages={messages} />
+        <ChatMessages messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
       <div className="border-t border-border bg-background p-4">
         <div className="mx-auto max-w-4xl">
@@ -213,21 +238,6 @@ export default function ThreadPage() {
               disabled={!user}
               className="min-h-[60px]"
             />
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isSending || !input.trim() || !user}
-                className="px-6 py-3"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {isSending 
-                  ? "Sending..." 
-                  : multiModelMode && multiModelSelection.secondary.length > 0 
-                    ? `Send to ${1 + multiModelSelection.secondary.length} Models`
-                    : "Send"
-                }
-              </Button>
-            </div>
           </form>
         </div>
       </div>

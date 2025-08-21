@@ -14,7 +14,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   });
   
   // Extract text and non-text parts
-  console.log(message);
   const textParts = message.parts.filter(part => part.type === "text");
   const fileParts = message.parts.filter(part => part.type === "file");
   const hasFiles = fileParts.length > 0;
@@ -36,7 +35,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {hasFiles && (
           <div className="mb-3 space-y-2">
             {fileParts.map((part, index) => {
-              console.log(part);
               // Type assertion for file parts that have these properties
               const filePart = part as { data?: string; filename?: string; mimeType?: string };
               return (

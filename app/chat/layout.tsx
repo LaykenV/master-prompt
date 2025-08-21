@@ -36,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Toaster } from "sonner";
 
 export default function ChatLayout({
   children,
@@ -61,6 +62,7 @@ export default function ChatLayout({
 
   return (
     <SidebarProvider className="h-full">
+      <Toaster position="top-center" richColors />
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">

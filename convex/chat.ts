@@ -36,7 +36,7 @@ export const registerUploadedFile = action({
         sha256: v.optional(v.string()),
     },
     returns: v.object({ fileId: v.string(), url: v.string(), storageId: v.string() }),
-    handler: async (ctx, { storageId, fileName, mimeType, sha256 }) => {
+    handler: async (ctx, { storageId, fileName, sha256 }) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
 

@@ -7,13 +7,16 @@ import { useAutoScroll } from "@/hooks/use-auto-scroll";
 import { MessageBubble } from "./MessageBubble";
 import { MultiResponseMessage } from "./MultiResponseMessage";
 import { Button } from "./ui/button";
+import { Skeleton } from "./ui/skeleton";
+import { Loader2 } from "lucide-react";
 import { ChevronDown } from "lucide-react";
 
 interface ChatMessagesProps {
   messages: ReturnType<typeof useThreadMessages>;
+  pendingFromRedirect?: { content: string; hasFiles?: boolean; createdAt?: number } | null;
 }
 
-export function ChatMessages({ messages }: ChatMessagesProps) {
+export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProps) {
   const uiMessages = messages.results ? toUIMessages(messages.results) : [];
   
   // Track streaming status for better auto-scroll dependency
@@ -30,18 +33,32 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
 
   if (messages.isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-muted-foreground" role="status" aria-label="Loading messages">Loading messages...</div>
+      <div className="h-full p-4">
+        <div className="mx-auto max-w-4xl space-y-4">
+          {pendingFromRedirect ? (
+            <UserPendingSkeleton hasFiles={!!pendingFromRedirect.hasFiles} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground" role="status" aria-label="Loading messages">Loading messages...</div>
+          )}
+        </div>
       </div>
     );
   }
 
   if (!messages.results || messages.results.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center space-y-2">
-          <div className="text-muted-foreground">No messages yet</div>
-          <div className="text-sm text-muted-foreground">Start the conversation below</div>
+      <div className="h-full p-4">
+        <div className="mx-auto max-w-4xl">
+          {pendingFromRedirect ? (
+            <UserPendingSkeleton hasFiles={!!pendingFromRedirect.hasFiles} />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center space-y-2">
+                <div className="text-muted-foreground">No messages yet</div>
+                <div className="text-sm text-muted-foreground">Start the conversation below</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -67,6 +84,10 @@ export function ChatMessages({ messages }: ChatMessagesProps) {
         className="h-full overflow-auto p-4 custom-scrollbar"
       >
         <div className="mx-auto max-w-4xl space-y-4">
+          {/* Show pending user skeleton above real messages if needed (very brief overlap window) */}
+          {pendingFromRedirect && (
+            <UserPendingSkeleton hasFiles={!!pendingFromRedirect.hasFiles} />
+          )}
           {uiMessages.map((m, index) => {
             // Check if this is a user message that might be part of a multi-model run
             if (m.role === "user") {
@@ -131,4 +152,26 @@ function MessageWithMultiModel({ message, messageId }: { message: UIMessage; mes
 
   // Otherwise, show the regular message bubble
   return <MessageBubble message={message} />;
+}
+
+function UserPendingSkeleton({ hasFiles }: { hasFiles?: boolean }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[80%] rounded-lg p-4 bg-primary text-primary-foreground ml-12">
+        <div className="text-xs opacity-60 mb-1">You</div>
+        {hasFiles && (
+          <div className="mb-3 space-y-2">
+            <Skeleton className="h-24 w-56" />
+          </div>
+        )}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+        <div className="mt-3 flex justify-center">
+          <Loader2 className="h-4 w-4 animate-spin" />
+        </div>
+      </div>
+    </div>
+  );
 }
