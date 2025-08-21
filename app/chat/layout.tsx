@@ -23,12 +23,11 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+
 import { 
   MessageSquare, 
-  Plus, 
   X, 
-  User,
+  LogOut,
   Sparkles,
   Settings
 } from "lucide-react";
@@ -69,15 +68,13 @@ export default function ChatLayout({
             <Sparkles className="h-6 w-6 text-primary" />
             <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">Master Prompt</span>
           </div>
-          <Button 
-            asChild 
-            className="w-full justify-start gap-2 bg-primary hover:bg-primary/90 text-primary-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+          <Link 
+            href="/chat"
+            className="btn-new-chat group-data-[collapsible=icon]:justify-center"
           >
-            <Link href="/chat">
-              <Plus className="h-4 w-4" />
-              <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
-            </Link>
-          </Button>
+            <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
+            <span className="hidden group-data-[collapsible=icon]:block">+</span>
+          </Link>
         </SidebarHeader>
         
         <Separator />
@@ -87,7 +84,7 @@ export default function ChatLayout({
             <SidebarGroupLabel className="text-sidebar-foreground/70 font-medium">
               Recent Chats
             </SidebarGroupLabel>
-            <SidebarGroupContent>
+            <SidebarGroupContent className="chats-scroll max-h-[60vh]">
               {!isAuthenticated ? (
                 <div className="text-sm text-muted-foreground px-2 py-4">
                   Sign in to start chatting
@@ -107,7 +104,11 @@ export default function ChatLayout({
                       const isActive = activeThreadId === thread._id;
                       return (
                         <SidebarMenuItem key={thread._id}>
-                          <SidebarMenuButton asChild isActive={isActive}>
+                          <SidebarMenuButton 
+                            asChild 
+                            isActive={isActive}
+                            tooltip={thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}
+                          >
                             <Link href={`/chat/${thread._id}`} className="flex items-center gap-2">
                               <MessageSquare className="h-4 w-4" />
                               <span className="truncate">
@@ -154,14 +155,11 @@ export default function ChatLayout({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton 
-                    className="w-full justify-between" 
+                    className="w-full justify-start gap-2 hover:bg-destructive/70 hover:text-destructive-foreground cursor-pointer" 
                     onClick={() => void signOut().then(() => router.push("/"))}
                   >
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      <span className="truncate">{user.name || user.email || "User"}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Sign Out</span>
+                    <LogOut className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
