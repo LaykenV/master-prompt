@@ -1,9 +1,10 @@
 import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "./_generated/api";
 import { v } from "convex/values";
-import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA } from "./agent";
+import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA, summaryAgent } from "./agent";
 import { saveMessage, getFile } from "@convex-dev/agent";
 import { internalMutation, internalAction } from "./_generated/server";
+import { z } from "zod";
 
 const RUN_STATUS = v.union(
   v.literal("initial"),
@@ -107,18 +108,11 @@ export const multiModelGeneration = workflow.define({
     });
     const summaryPromise = step.runAction(internal.workflows.generateRunSummary, {
       masterThreadId,
-      masterModelId,
       originalPrompt: prompt,
       initialResponses: initialResponsesWithMeta,
       refinedResponses: refinedResponsesWithMeta,
     });
-    const [, summaryText] = await Promise.all([synthesisPromise, summaryPromise]);
-    if (summaryText && typeof summaryText === "string") {
-      await step.runMutation(internal.workflows.setRunSummary, {
-        masterMessageId,
-        summary: summaryText,
-      });
-    }
+    await Promise.all([synthesisPromise, summaryPromise]);
   },
 });
 
@@ -443,22 +437,83 @@ Synthesize these peer-reviewed conclusions into a single, comprehensive, and aut
 export const generateRunSummary = internalAction({
   args: {
     masterThreadId: v.string(),
-    masterModelId: MODEL_ID_SCHEMA,
     originalPrompt: v.string(),
     initialResponses: v.array(v.object({ modelId: MODEL_ID_SCHEMA, response: v.string() })),
     refinedResponses: v.array(v.object({ modelId: MODEL_ID_SCHEMA, response: v.string() })),
   },
-  returns: v.string(),
-  handler: async (ctx, { masterThreadId, masterModelId, originalPrompt, initialResponses, refinedResponses }) => {
+  returns: v.null(),
+  handler: async (ctx, { masterThreadId, originalPrompt, initialResponses, refinedResponses }) => {
     try {
-      const agent = createAgentWithModel(masterModelId as ModelId);
+      const agent = summaryAgent;
       const { thread } = await agent.continueThread(ctx, { threadId: masterThreadId });
-      const prompt = `Summarize the cross-model dynamics for the following task. Identify agreements/disagreements initially and how positions changed after the debate. Keep it concise and factual.\n\nOriginal prompt:\n${originalPrompt}\n\nInitial responses:\n${initialResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}\n\nRefined (debate) responses:\n${refinedResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}`;
-      const result = await thread.generateText({ prompt }, { storageOptions: { saveMessages: "none" } });
-      return result.text ?? "";
+      const allowedIds = Array.from(new Set([
+        ...initialResponses.map(({ modelId }) => modelId as string),
+        ...refinedResponses.map(({ modelId }) => modelId as string),
+      ]));
+      const allowedIdsEnum = z.enum(allowedIds as [string, ...string[]]);
+
+      const summarySchema = z.object({
+        originalPrompt: z.string(),
+        overview: z.string(),
+        crossModel: z.object({
+          agreements: z.array(z.string()),
+          disagreements: z.array(z.string()),
+          convergenceSummary: z.string(),
+        }),
+        perModel: z.array(z.object({
+          modelId: allowedIdsEnum,
+          modelName: z.string(),
+          initialSummary: z.string(),
+          refinedSummary: z.string(),
+          changedPosition: z.boolean(),
+          keyPoints: z.array(z.string()),
+        })).length(allowedIds.length),
+      });
+
+      const prompt = `You are analyzing a multi-model debate. Build a concise, factual structured summary that matches the provided schema exactly. Do not include markdown—return pure JSON. Use short sentences for table display.\n\nOriginal prompt:\n${originalPrompt}\n\nInitial responses:\n${initialResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}\n\nRefined (debate) responses:\n${refinedResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}\n\nFor perModel, include entries for exactly these modelIds and no others: ${allowedIds.join(", ")}. Use the corresponding display names for modelName. Set overview to a one-sentence high-level takeaway.`;
+
+      // Generate the structured object summary
+      const { object: finalObject } = await thread.generateObject({
+        prompt,
+        schema: summarySchema,
+      }, { storageOptions: { saveMessages: "none" } });
+
+      // Persist the structured result
+      const structured = finalObject as {
+        originalPrompt: string;
+        overview?: string;
+        crossModel: { agreements: string[]; disagreements: string[]; convergenceSummary: string };
+        perModel: Array<{
+          modelId: ModelId;
+          modelName: string;
+          initialSummary: string;
+          refinedSummary: string;
+          changedPosition: boolean;
+          keyPoints: string[];
+        }>;
+      };
+      const ensured = { ...structured, overview: structured.overview ?? structured.crossModel.convergenceSummary } as {
+        originalPrompt: string;
+        overview: string;
+        crossModel: { agreements: string[]; disagreements: string[]; convergenceSummary: string };
+        perModel: Array<{
+          modelId: ModelId;
+          modelName: string;
+          initialSummary: string;
+          refinedSummary: string;
+          changedPosition: boolean;
+          keyPoints: string[];
+        }>;
+      };
+      await ctx.runMutation(internal.workflows.setRunSummaryStructured, {
+        masterThreadId,
+        summary: ensured,
+      });
+
+      return null;
     } catch (error) {
       console.error("Error generating run summary:", error);
-      return "";
+      return null;
     }
   },
 });
@@ -477,6 +532,42 @@ export const setRunSummary = internalMutation({
       .unique();
     if (!run) return null;
     await ctx.db.patch(run._id, { runSummary: summary });
+    return null;
+  },
+});
+
+// Save the structured run summary to the run document
+export const setRunSummaryStructured = internalMutation({
+  args: {
+    masterThreadId: v.string(),
+    summary: v.object({
+      originalPrompt: v.string(),
+      overview: v.string(),
+      crossModel: v.object({
+        agreements: v.array(v.string()),
+        disagreements: v.array(v.string()),
+        convergenceSummary: v.string(),
+      }),
+      perModel: v.array(v.object({
+        modelId: MODEL_ID_SCHEMA,
+        modelName: v.string(),
+        initialSummary: v.string(),
+        refinedSummary: v.string(),
+        changedPosition: v.boolean(),
+        keyPoints: v.array(v.string()),
+      })),
+    }),
+  },
+  returns: v.null(),
+  handler: async (ctx, { masterThreadId, summary }) => {
+    const run = await ctx.db
+      .query("multiModelRuns")
+      .withIndex("by_master_thread", (q) => q.eq("masterThreadId", masterThreadId))
+      .order("desc")
+      .take(1);
+    const latest = run[0];
+    if (!latest) return null;
+    await ctx.db.patch(latest._id, { runSummaryStructured: summary });
     return null;
   },
 });

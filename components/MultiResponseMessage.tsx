@@ -83,9 +83,9 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
           </div>
         )}
 
-        {/* Final Card */}
+        {/* Final Summary Table */}
         {allDone && (
-          <FinalStatusCard summary={multiModelRun.runSummary} />
+          <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
         )}
 
         {/* Centered details modal */}
@@ -142,7 +142,7 @@ function RunStatusCard({
       <div className="mt-2 flex items-center justify-between gap-3">
         <StatusIcon status={run.status} stage={stage} />
         <button type="button" aria-label="See details" onClick={onSeeDetails} className="btn-new-chat-compact h-7 px-3 text-xs">
-          See details
+          Open Thread
         </button>
       </div>
       {isError && (
@@ -152,19 +152,113 @@ function RunStatusCard({
   );
 }
 
-function FinalStatusCard({ summary }: { summary?: string }) {
+function FinalSummaryTable({ structured, fallbackText }: { structured?: {
+  originalPrompt: string;
+  overview?: string;
+  crossModel: { agreements: string[]; disagreements: string[]; convergenceSummary: string };
+  perModel: Array<{ modelId: string; modelName: string; initialSummary: string; refinedSummary: string; changedPosition: boolean; keyPoints: string[] }>;
+}, fallbackText?: string }) {
+  if (!structured) {
+    return (
+      <Card className="p-4 border-primary/60">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Sparkles className="h-4 w-4 text-primary" /> Final response
+        </div>
+        <div className="mt-2 text-sm text-muted-foreground min-h-6">
+          {fallbackText ? fallbackText : (
+            <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Generating summary…</div>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="p-4 border-primary/60">
+    <Card className="p-4 border-primary/60 bg-card/60">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="h-4 w-4 text-primary" /> Final response
+        <Sparkles className="h-4 w-4 text-primary" /> Final summary
       </div>
-      <div className="mt-2 text-sm text-muted-foreground min-h-6">
-        {summary ? summary : (
-          <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Generating summary…</div>
-        )}
+
+      {/* Overview / Cross-model chips */}
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="table-tile">
+          <div className="table-tile-title">Overview</div>
+          <div className="table-tile-body text-sm text-muted-foreground min-h-6">
+            {structured.overview || structured.crossModel.convergenceSummary}
+          </div>
+        </div>
+        <div className="table-tile">
+          <div className="table-tile-title">Agreements</div>
+          <div className="table-chip-group">
+            {structured.crossModel.agreements.length === 0 ? (
+              <span className="table-chip">None</span>
+            ) : (
+              structured.crossModel.agreements.map((a, i) => (
+                <span key={`agree-${i}`} className="table-chip">{a}</span>
+              ))
+            )}
+          </div>
+        </div>
+        <div className="table-tile">
+          <div className="table-tile-title">Disagreements</div>
+          <div className="table-chip-group">
+            {structured.crossModel.disagreements.length === 0 ? (
+              <span className="table-chip">None</span>
+            ) : (
+              structured.crossModel.disagreements.map((d, i) => (
+                <span key={`disagree-${i}`} className="table-chip chip-destructive">{d}</span>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Per-model table */}
+      <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+        <table className="summary-table w-full">
+          <thead>
+            <tr>
+              <th className="text-left">Model</th>
+              <th className="text-left">Initial</th>
+              <th className="text-left">Refined</th>
+              <th className="text-left">Changed?</th>
+              <th className="text-left">Key points</th>
+            </tr>
+          </thead>
+          <tbody>
+            {structured.perModel.map((row) => (
+              <tr key={row.modelId}>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{getIconSafe(row.modelId)}</span>
+                    <span className="font-medium">{row.modelName}</span>
+                  </div>
+                </td>
+                <td className="text-sm text-muted-foreground whitespace-pre-wrap">{row.initialSummary}</td>
+                <td className="text-sm text-muted-foreground whitespace-pre-wrap">{row.refinedSummary}</td>
+                <td>
+                  <Badge variant={row.changedPosition ? "default" : "secondary"} className="text-xs">
+                    {row.changedPosition ? "Yes" : "No"}
+                  </Badge>
+                </td>
+                <td>
+                  <div className="table-chip-group">
+                    {row.keyPoints.map((k, i) => (
+                      <span key={`kp-${row.modelId}-${i}`} className="table-chip">{k}</span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
+}
+
+function getIconSafe(modelId: string) {
+  try { return getModelIcon(modelId as ModelId); } catch { return "🤖"; }
 }
 
 function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isMaster, getIcon }: { open: boolean; onOpenChange: (open: boolean) => void; threadId?: string; modelId?: string; modelInfo?: { displayName: string; provider: string }; isMaster?: boolean; getIcon: (modelId: string, provider?: string) => string }) {

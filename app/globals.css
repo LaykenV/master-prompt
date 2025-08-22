@@ -713,4 +713,57 @@
   .chat-content {
     padding-top: 1rem;
   }
+
+  /* Summary table UI */
+  .summary-table th, .summary-table td {
+    padding: 0.75rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    vertical-align: top;
+  }
+  .summary-table thead th {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.10) 0%,
+        hsl(var(--primary) / 0.06) 100%
+      );
+    border-bottom: 1px solid hsl(var(--primary) / 0.25);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .summary-table tbody tr:hover {
+    background: hsl(var(--accent) / 0.25);
+    transition: background 0.18s ease;
+  }
+  .table-chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .table-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--border));
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.08) 0%,
+        hsl(var(--primary) / 0.04) 100%
+      ),
+      hsl(var(--card));
+    font-size: 0.75rem;
+  }
+  .chip-destructive {
+    border-color: hsl(var(--destructive) / 0.35);
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--destructive) / 0.12) 0%,
+        hsl(var(--destructive) / 0.06) 100%
+      ),
+      hsl(var(--card));
+    color: hsl(var(--destructive));
+  }
+  .table-tile { @apply rounded-lg border border-border bg-card p-3; }
+  .table-tile-title { @apply text-xs font-medium text-muted-foreground; }
+  .table-tile-body { @apply mt-1; }
 }

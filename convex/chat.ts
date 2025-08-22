@@ -500,6 +500,27 @@ export const getMultiModelRun = query({
             masterThreadId: v.string(),
             masterModelId: MODEL_ID_SCHEMA,
             runSummary: v.optional(v.string()),
+            runSummaryStructured: v.optional(
+                v.object({
+                    originalPrompt: v.string(),
+                    overview: v.string(),
+                    crossModel: v.object({
+                        agreements: v.array(v.string()),
+                        disagreements: v.array(v.string()),
+                        convergenceSummary: v.string(),
+                    }),
+                    perModel: v.array(
+                        v.object({
+                            modelId: MODEL_ID_SCHEMA,
+                            modelName: v.string(),
+                            initialSummary: v.string(),
+                            refinedSummary: v.string(),
+                            changedPosition: v.boolean(),
+                            keyPoints: v.array(v.string()),
+                        })
+                    ),
+                })
+            ),
             allRuns: v.array(v.object({
                 modelId: MODEL_ID_SCHEMA,
                 threadId: v.string(),
@@ -537,6 +558,27 @@ export const getLatestMultiModelRunForThread = query({
             masterThreadId: v.string(),
             masterModelId: MODEL_ID_SCHEMA,
             runSummary: v.optional(v.string()),
+            runSummaryStructured: v.optional(
+                v.object({
+                    originalPrompt: v.string(),
+                    overview: v.string(),
+                    crossModel: v.object({
+                        agreements: v.array(v.string()),
+                        disagreements: v.array(v.string()),
+                        convergenceSummary: v.string(),
+                    }),
+                    perModel: v.array(
+                        v.object({
+                            modelId: MODEL_ID_SCHEMA,
+                            modelName: v.string(),
+                            initialSummary: v.string(),
+                            refinedSummary: v.string(),
+                            changedPosition: v.boolean(),
+                            keyPoints: v.array(v.string()),
+                        })
+                    ),
+                })
+            ),
             allRuns: v.array(v.object({
                 modelId: MODEL_ID_SCHEMA,
                 threadId: v.string(),

@@ -317,7 +317,7 @@ export function MessageInput({
               type="button"
               size="icon"
               variant="outline"
-              className="h-8 w-8"
+              className="h-8 w-8 cursor-pointer"
               aria-label="Attach a file"
               onClick={async () => {
                 const files = await showFileUploadDialog()

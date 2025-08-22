@@ -35,7 +35,8 @@ before synthesis starts or same time, small fast model call to build table obj
 then draw lines from each card to eachother for debate round
 then converge to single node for summary and table will render next to it. 
 //each node will link to expand the response
-change summary to an object and table
+//change summary to an object and table
+design table better and make faster
 do magicui component
 
 //clean up model name and logo into a config

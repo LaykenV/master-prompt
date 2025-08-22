@@ -36,6 +36,24 @@ export const AVAILABLE_MODELS = {
     icon: "🔮",
     chatModel: () => google("gemini-2.0-flash"),
   },
+  "gpt-5": {
+    provider: "openai",
+    displayName: "GPT-5",
+    icon: "🤖",
+    chatModel: () => openai.chat("gpt-5"),
+  },
+  "gpt-5-mini": {
+    provider: "openai",
+    displayName: "GPT-5 Mini",
+    icon: "🤖",
+    chatModel: () => openai.chat("gpt-5-mini"),
+  },
+  "gpt-5-nano": {
+    provider: "openai",
+    displayName: "GPT-5 Nano",
+    icon: "🤖",
+    chatModel: () => openai.chat("gpt-5-nano"),
+  },
 } as const;
 
 export type ModelId = keyof typeof AVAILABLE_MODELS;
@@ -46,7 +64,10 @@ export const MODEL_ID_SCHEMA = v.union(
   v.literal("gpt-4o"),
   v.literal("gemini-2.5-flash"),
   v.literal("gemini-2.5-pro"),
-  v.literal("gemini-2.0-flash")
+  v.literal("gemini-2.0-flash"),
+  v.literal("gpt-5"),
+  v.literal("gpt-5-mini"),
+  v.literal("gpt-5-nano")
 );
 
 // Helper function to get chat model by ID
@@ -85,4 +106,13 @@ export function createAgentWithModel(modelId: ModelId) {
 
 // Default agent instance for saving messages and other operations
 export const masterPromptAgent = createAgentWithModel("gpt-4o-mini");
+
+export const summaryAgent = new Agent(components.agent, {
+    name: "Summary Agent",
+    chat: getChatModel("gpt-5-nano"),
+    instructions: "You are a helpful assistant that can answer questions and help with tasks.",
+    usageHandler: async (ctx, { model, usage}) => {
+        console.log(`Model: ${model}, Usage:`, usage);
+    },
+});
 
