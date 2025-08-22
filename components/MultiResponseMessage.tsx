@@ -3,10 +3,10 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
-import { useState, useRef, createRef, MutableRefObject, RefObject } from "react";
+import { useState, useRef, createRef, MutableRefObject, RefObject, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, CheckCircle2, Loader2, AlertCircle, X } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, X, Brain } from "lucide-react";
 import { getModelIcon, getProviderIcon } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
 import { MessageBubble } from "./MessageBubble";
@@ -30,6 +30,13 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   const debateTopAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
   const debateBottomAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
   const finalTopAnchorRef = useRef<HTMLDivElement>(null);
+  
+  // Animated beam reveal state
+  const revealTargetsRef = useRef<Record<string, number>>({});
+  const revealProgressRef = useRef<Record<string, number>>({});
+  const rafRef = useRef<number | null>(null);
+  const lastTsRef = useRef<number | null>(null);
+  const [, setRevealTick] = useState<number>(0);
 
   const ensureRunRef = (
     mapRef: MutableRefObject<Record<string, RefObject<HTMLDivElement | null>>>,
@@ -41,10 +48,6 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
     return mapRef.current[key];
   };
   
-  if (!multiModelRun) {
-    return null;
-  }
-
   
   const getModelInfo = (modelId: string) => {
     return availableModels?.find(m => m.id === modelId);
@@ -58,12 +61,75 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
       return getProviderIcon(provider || "");
     }
   };
+  // Build targets and tween revealProgress toward them
+  useEffect(() => {
+    const nextTargets: Record<string, number> = {};
+    if (multiModelRun) {
+      for (const from of multiModelRun.allRuns) {
+        for (const to of multiModelRun.allRuns) {
+          const k = `i:${from.threadId}->${to.threadId}`;
+          nextTargets[k] = from.status === "initial" ? 0 : 1;
+        }
+        const kf = `f:${from.threadId}`;
+        nextTargets[kf] = (from.status === "complete" || from.status === "error") ? 1 : 0;
+      }
+    }
+    revealTargetsRef.current = nextTargets;
+    // Ensure progress keys exist
+    for (const key in nextTargets) {
+      if (revealProgressRef.current[key] === undefined) {
+        revealProgressRef.current[key] = nextTargets[key] === 1 ? 1 : 0;
+      }
+    }
+    // Start tweener
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    lastTsRef.current = null;
+    const durationMs = 650; // total time to grow 0->1
+    const animate = (ts: number) => {
+      if (lastTsRef.current == null) lastTsRef.current = ts;
+      const dt = ts - lastTsRef.current;
+      lastTsRef.current = ts;
+      let anyChange = false;
+      const step = Math.max(0.001, dt / durationMs);
+      for (const key in revealTargetsRef.current) {
+        const target = revealTargetsRef.current[key];
+        const current = revealProgressRef.current[key] ?? 0;
+        const diff = target - current;
+        if (Math.abs(diff) > 0.002) {
+          const inc = Math.sign(diff) * Math.min(Math.abs(diff), step);
+          revealProgressRef.current[key] = current + inc;
+          anyChange = true;
+        } else {
+          revealProgressRef.current[key] = target;
+        }
+      }
+      if (anyChange) {
+        setRevealTick((t) => t + 1);
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        rafRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [multiModelRun]);
+
+  if (!multiModelRun) {
+    return null;
+  }
+
   // Derived flags (no hooks to avoid conditional hook calls)
   const allLeftInitial = multiModelRun.allRuns.every(r => r.status !== "initial");
   const allDone = multiModelRun.allRuns.every(r => r.status === "complete" || r.status === "error");
   const initialComplete = allLeftInitial;
   const debateStarted = multiModelRun.allRuns.some(r => r.status === "debate" || r.status === "complete" || r.status === "error");
   const debateComplete = allDone;
+  const isTwo = multiModelRun.allRuns.length === 2;
+
+  // (removed duplicate tween effect)
 
   const selectedRun = details ? multiModelRun.allRuns.find(r => r.threadId === details.threadId) : null;
 
@@ -98,7 +164,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
               {/* Initial Stage */}
               <div className="space-y-2">
                 <div className="text-xs font-medium text-muted-foreground">Initial responses</div>
-                <div className="relative z-10 grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div className={`relative z-10 grid gap-3 md:gap-8 lg:gap-10 xl:gap-12 ${isTwo ? "grid-cols-2 md:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
                   {multiModelRun.allRuns.map((run) => (
                     <RunStatusCard
                       key={`initial-${run.threadId}`}
@@ -109,16 +175,17 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                       onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "initial" })}
                       nodeRef={ensureRunRef(initialCardRefs, run.threadId)}
                       anchorBottomRef={ensureRunRef(initialBottomAnchorRefs, run.threadId)}
+                      showStatus={true}
                     />
                   ))}
                 </div>
               </div>
 
               {/* Debate Stage */}
-              {allLeftInitial && (
-                <div className="space-y-2">
+              {/* Always show debate stage shell with spacing; content animates in */}
+              <div className="space-y-2">
                   <div className="text-xs font-medium text-muted-foreground">Debate round</div>
-                  <div className="relative z-10 grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className={`relative z-10 grid gap-3 md:gap-8 lg:gap-10 xl:gap-12 ${isTwo ? "grid-cols-2 md:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
                     {multiModelRun.allRuns.map((run) => (
                       <RunStatusCard
                         key={`debate-${run.threadId}`}
@@ -130,15 +197,15 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                         nodeRef={ensureRunRef(debateCardRefs, run.threadId)}
                         anchorTopRef={ensureRunRef(debateTopAnchorRefs, run.threadId)}
                         anchorBottomRef={ensureRunRef(debateBottomAnchorRefs, run.threadId)}
+                        showStatus={initialComplete}
                       />
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Final Summary Table */}
-              {allDone && (
-                <div className="space-y-2">
+              {/* Always show final summary shell; compact card indicates progress */}
+              <div className="space-y-2">
                   <div className="flex items-center justify-end">
                     <button
                       type="button"
@@ -152,13 +219,12 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   <div className="relative">
                     <div ref={finalTopAnchorRef} className="absolute left-1/2 -top-2 -translate-x-1/2 h-0 w-0" />
                     {finalCollapsed ? (
-                      <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} onExpand={() => setFinalCollapsed(false)} />
+                      <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText="" showSpinner={debateComplete} onExpand={() => setFinalCollapsed(false)} />
                     ) : (
-                      <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
+                      <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={debateComplete ? (multiModelRun.runSummary || "") : ""} />
                     )}
                   </div>
                 </div>
-              )}
 
               {/* Centered details modal */}
               <RunDetailsModal
@@ -174,8 +240,8 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
           )}
 
           {/* Animated beams overlay (behind cards, hidden on mobile) */}
-          {!collapsedAll && allLeftInitial && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0">
+          {!collapsedAll && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0 beams-overlay">
               {multiModelRun.allRuns.flatMap((fromRun) =>
                 multiModelRun.allRuns.map((toRun) => (
                   <AnimatedBeam
@@ -183,21 +249,31 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                     containerRef={containerRef}
                     fromRef={ensureRunRef(initialBottomAnchorRefs, fromRun.threadId)}
                     toRef={ensureRunRef(debateTopAnchorRefs, toRun.threadId)}
-                    curvature={0}
-                    pathOpacity={0.2}
+                    curvature={10}
+                    pathOpacity={0.18}
+                    pathWidth={2}
                     pathColor="hsl(var(--primary))"
-                    gradientStartColor="#60a5fa"
-                    gradientStopColor="#a78bfa"
+                  gradientStartColor="#34d399"
+                  gradientStopColor="#60a5fa"
                     duration={4.5}
                     delay={0}
+                    showFlow
+                    flowDuration={3}
+                    showNodes
+                    nodeRadius={3.5}
+                    glow
+                    glowOpacity={0.25}
+                    dashLength={10}
+                    dashGap={14}
+                    revealProgress={revealProgressRef.current[`i:${fromRun.threadId}->${toRun.threadId}`] ?? 0}
                   />
                 )),
               )}
             </div>
           )}
 
-          {!collapsedAll && allDone && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0">
+          {!collapsedAll && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0 beams-overlay">
               {multiModelRun.allRuns.map((run) => (
                 <AnimatedBeam
                   key={`beam-debate-${run.threadId}-final`}
@@ -206,11 +282,21 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   toRef={finalTopAnchorRef}
                   curvature={0}
                   pathOpacity={0.22}
+                  pathWidth={2}
                   pathColor="hsl(var(--primary))"
                   gradientStartColor="#34d399"
                   gradientStopColor="#60a5fa"
                   duration={4.5}
                   delay={0.1}
+                  showFlow
+                  flowDuration={3.2}
+                  showNodes
+                  nodeRadius={3.5}
+                  glow
+                  glowOpacity={0.28}
+                  dashLength={10}
+                  dashGap={14}
+                  revealProgress={revealProgressRef.current[`f:${run.threadId}`] ?? 0}
                 />
               ))}
             </div>
@@ -220,7 +306,8 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
     </Card>
   );
 }
-function StatusIcon({ status, stage }: { status: "initial" | "debate" | "complete" | "error"; stage: "initial" | "debate" }) {
+function StatusIcon({ status, stage, visible = true }: { status: "initial" | "debate" | "complete" | "error"; stage: "initial" | "debate"; visible?: boolean }) {
+  if (!visible) return <div className="h-4 w-4" />;
   if (stage === "initial") {
     if (status === "initial") return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
     if (status === "error") return <AlertCircle className="h-4 w-4 text-destructive" />;
@@ -242,6 +329,7 @@ function RunStatusCard({
   nodeRef,
   anchorTopRef,
   anchorBottomRef,
+  showStatus = true,
 }: {
   stage: "initial" | "debate";
   run: { modelId: string; threadId: string; isMaster: boolean; status: "initial" | "debate" | "complete" | "error"; errorMessage?: string };
@@ -251,6 +339,7 @@ function RunStatusCard({
   nodeRef?: RefObject<HTMLDivElement | null>;
   anchorTopRef?: RefObject<HTMLDivElement | null>;
   anchorBottomRef?: RefObject<HTMLDivElement | null>;
+  showStatus?: boolean;
 }) {
   const label = stage === "initial" ? "Initial" : "Debate";
   const isError = run.status === "error";
@@ -267,7 +356,7 @@ function RunStatusCard({
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between gap-3">
-          <StatusIcon status={run.status} stage={stage} />
+          <StatusIcon status={run.status} stage={stage} visible={showStatus} />
           <button type="button" aria-label="See details" onClick={onSeeDetails} className="btn-new-chat-compact h-7 px-3 text-xs">
             Open Thread
           </button>
@@ -293,7 +382,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
       <div className="relative">
         <Card className="p-4 border-primary/60">
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="h-4 w-4 text-primary" /> Final response
+            <Brain className="h-4 w-4 text-primary" /> Final response
           </div>
           <div className="mt-2 text-sm text-muted-foreground min-h-6">
             {fallbackText ? fallbackText : (
@@ -309,7 +398,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
     <div className="relative">
     <Card className="p-4 border-primary/60 border-dashed bg-card/60">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="h-4 w-4 text-primary" /> Final summary
+        <Brain className="h-4 w-4 text-primary" /> Final summary
       </div>
 
       {/* Overview / Cross-model chips */}
@@ -454,9 +543,9 @@ function CollapsedWholeCard({ initialComplete, debateStarted, debateComplete, on
   );
 }
 
-function FinalSummaryCompactCard({ structured, fallbackText, onExpand }: { structured?: { overview?: string; crossModel: { convergenceSummary: string } }, fallbackText?: string, onExpand?: () => void }) {
+function FinalSummaryCompactCard({ structured, fallbackText, onExpand, showSpinner = false }: { structured?: { overview?: string; crossModel: { convergenceSummary: string } }, fallbackText?: string, onExpand?: () => void, showSpinner?: boolean }) {
   const overview = structured?.overview || structured?.crossModel.convergenceSummary || fallbackText || "";
-  const isLoading = overview.trim().length === 0;
+  const isLoading = showSpinner && overview.trim().length === 0;
   return (
     <div
       className="collapsed-card"
@@ -470,7 +559,7 @@ function FinalSummaryCompactCard({ structured, fallbackText, onExpand }: { struc
       }}
     >
       <div className="final-compact-title">
-        <Sparkles className="h-4 w-4 text-primary" />
+        <Brain className="h-4 w-4 text-primary" />
         <span>Final overview</span>
         {isLoading ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : <CheckCircle2 className="h-3 w-3 text-green-600" />}
       </div>
@@ -549,7 +638,6 @@ function ModelResponseCard({
           <span className="text-sm font-medium">
             {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
           </span>
-          {isMaster && <Sparkles className="h-3 w-3 text-primary" />}
           <Badge variant={isMaster ? "default" : "secondary"} className="text-xs">
             {isMaster ? "Master" : "Secondary"}
           </Badge>

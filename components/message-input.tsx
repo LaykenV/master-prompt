@@ -12,6 +12,8 @@ import { FilePreview } from "@/components/file-preview"
 import { InterruptPrompt } from "@/components/interrupt-prompt"
 import { toast } from "sonner"
 import { ModelPicker } from "@/components/ModelPicker"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -61,6 +63,25 @@ export function MessageInput({
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
+  const isMobile = useIsMobile()
+
+  // Measure bottom controls area to reserve padding in the textarea dynamically
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const [bottomHeight, setBottomHeight] = useState<number>(0)
+
+  useEffect(() => {
+    if (!bottomRef.current) return
+    const element = bottomRef.current
+    const update = () => setBottomHeight(element.getBoundingClientRect().height)
+    update()
+    const ro = new ResizeObserver(() => update())
+    ro.observe(element)
+    window.addEventListener("resize", update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", update)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isGenerating) {
@@ -73,7 +94,6 @@ export function MessageInput({
   const ALLOWED_MIME_TYPES: Array<string> = [
     "application/pdf",
     "application/json",
-    "text/plain",
     "text/markdown",
     "image/png",
     "image/jpeg",
@@ -83,7 +103,6 @@ export function MessageInput({
   const ALLOWED_EXTENSIONS: Array<string> = [
     "pdf",
     "json",
-    "txt",
     "md",
     "markdown",
     "png",
@@ -166,18 +185,6 @@ export function MessageInput({
     const items = event.clipboardData?.items
     if (!items) return
 
-    const text = event.clipboardData.getData("text")
-    if (text && text.length > 500 && props.allowAttachments) {
-      event.preventDefault()
-      const blob = new Blob([text], { type: "text/plain" })
-      const file = new File([blob], "Pasted text", {
-        type: "text/plain",
-        lastModified: Date.now(),
-      })
-      addFiles([file])
-      return
-    }
-
     const files = Array.from(items)
       .map((item) => item.getAsFile())
       .filter((file) => file !== null)
@@ -220,8 +227,33 @@ export function MessageInput({
     ref: textAreaRef as React.RefObject<HTMLTextAreaElement>,
     maxHeight: 240,
     borderWidth: 1,
-    dependencies: [props.value, showFileList],
+    dependencies: [props.value, showFileList, bottomHeight],
   })
+
+  // Extract textarea props cleanly so we can merge styles (for dynamic padding)
+  const textareaExtraProps: React.TextareaHTMLAttributes<HTMLTextAreaElement> =
+    props.allowAttachments
+      ? (() => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { allowAttachments, files, setFiles, getFileUploadStatus, ...rest } = props
+          return rest
+        })()
+      : (() => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { allowAttachments, ...rest } = props
+          return rest
+        })()
+
+  // Determine how many file previews to show inline and how many to compact into a +N chip
+  const previewLimit = isMobile ? 1 : 3
+  const filesToShow = props.allowAttachments && props.files ? props.files.slice(0, previewLimit) : []
+  const remainingFileCount = props.allowAttachments && props.files ? Math.max(0, props.files.length - filesToShow.length) : 0
+
+  const getShortName = (name: string) => {
+    const limit = 5
+    if (name.length <= limit) return name
+    return name.slice(0, limit) + "…"
+  }
 
   return (
     <div
@@ -249,108 +281,171 @@ export function MessageInput({
             onKeyDown={onKeyDown}
             className={cn(
               "z-10 w-full grow resize-none rounded-xl border border-input p-3 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 surface-input",
-              // extra bottom padding to accommodate floating controls and previews
-              showFileList ? "pb-28 pr-3" : "pb-16 pr-3",
+              // Right padding for icons, bottom padding is added dynamically via style
+              "pr-3",
               className
             )}
-            {...(props.allowAttachments
-              ? (() => {
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { allowAttachments, files, setFiles, getFileUploadStatus, ...rest } = props
-                  return rest
-                })()
-              : (() => {
-                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                  const { allowAttachments, ...rest } = props
-                  return rest
-                })())}
+            {...textareaExtraProps}
+            style={{ ...(textareaExtraProps.style || {}), paddingBottom: bottomHeight + 16 }}
           />
-          {props.allowAttachments && (
-            <div className="absolute inset-x-3 bottom-12 z-20 overflow-x-scroll py-2">
-              <div className="flex space-x-3">
-                <AnimatePresence mode="popLayout">
-                  {props.files?.map((file) => {
-                    const uploading = props.allowAttachments && props.getFileUploadStatus ? props.getFileUploadStatus(file).uploading : false
-                    return (
-                      <FilePreview
-                        key={file.name + String(file.lastModified)}
-                        file={file}
-                        isUploading={uploading}
-                        onRemove={() => {
-                          props.setFiles((files) => {
-                            if (!files) return null
-                            const filtered = Array.from(files).filter((f) => f !== file)
-                            if (filtered.length === 0) return null
-                            return filtered
-                          })
-                        }}
-                      />
-                    )
-                  })}
-                </AnimatePresence>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Floating bottom controls */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex items-center justify-between">
-        <div className="pointer-events-auto">
-          {(() => {
-            const bindings = (modelPicker as ModelPickerBindings | undefined)
-            if (!bindings) return null
-            return (
-              <ModelPicker
-                threadId={bindings.threadId}
-                selectedModel={bindings.selectedModel}
-                onModelChange={bindings.onModelChange}
-                onMultiModelChange={bindings.onMultiModelChange}
-                latestUserMessageId={bindings.latestUserMessageId}
-              />
-            )
-          })()}
-        </div>
-        <div className="pointer-events-auto flex items-center gap-2">
-          {props.allowAttachments && (
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-8 w-8 cursor-pointer"
-              aria-label="Attach a file"
-              onClick={async () => {
-                const files = await showFileUploadDialog()
-                addFiles(files)
-              }}
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-          )}
-          {isGenerating && stop ? (
-            <Button
-              type="button"
-              size="icon"
-              className="h-9 w-9 btn-new-chat-compact"
-              aria-label="Stop generating"
-              onClick={stop}
-            >
-              <Square className="h-3.5 w-3.5" />
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              size="icon"
-              className={cn(
-                "h-9 w-9 transition-opacity",
-                "btn-new-chat-compact"
+      {/* Unified floating bottom section: model picker, inline file previews, and actions */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
+        <div ref={bottomRef} className="pointer-events-auto border-t surface-input px-2 py-2 sm:px-3 sm:py-2">
+          <div className="flex items-center gap-2">
+            <div className="shrink-0">
+              {(() => {
+                const bindings = (modelPicker as ModelPickerBindings | undefined)
+                if (!bindings) return null
+                return (
+                  <ModelPicker
+                    threadId={bindings.threadId}
+                    selectedModel={bindings.selectedModel}
+                    onModelChange={bindings.onModelChange}
+                    onMultiModelChange={bindings.onMultiModelChange}
+                    latestUserMessageId={bindings.latestUserMessageId}
+                  />
+                )
+              })()}
+            </div>
+
+            {props.allowAttachments && (
+              isMobile ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className="min-w-0 flex-1 overflow-hidden cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <AnimatePresence mode="popLayout">
+                          {filesToShow?.map((file) => {
+                            const uploading = props.allowAttachments && props.getFileUploadStatus ? props.getFileUploadStatus(file).uploading : false
+                            return (
+                              <FilePreview
+                                key={file.name + String(file.lastModified)}
+                                file={file}
+                                isUploading={uploading}
+                                compact={true}
+                                hideRemove={true}
+                                displayNameOverride={getShortName(file.name)}
+                              />
+                            )
+                          })}
+                        </AnimatePresence>
+                        {remainingFileCount > 0 && (
+                          <span
+                            className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground bg-card"
+                            aria-label={`Plus ${remainingFileCount} more file${remainingFileCount === 1 ? "" : "s"}`}
+                          >
+                            +{remainingFileCount}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[92vw] max-w-sm border-border p-2 rounded-xl surface-menu">
+                    <div className="max-h-[50vh] overflow-auto pr-1 flex flex-col gap-2">
+                      {props.files?.map((file) => {
+                        const uploading = props.allowAttachments && props.getFileUploadStatus ? props.getFileUploadStatus(file).uploading : false
+                        return (
+                          <FilePreview
+                            key={file.name + String(file.lastModified) + "-menu"}
+                            file={file}
+                            isUploading={uploading}
+                            compact={false}
+                            onRemove={() => {
+                              props.setFiles((files) => {
+                                if (!files) return null
+                                const filtered = Array.from(files).filter((f) => f !== file)
+                                if (filtered.length === 0) return null
+                                return filtered
+                              })
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    <AnimatePresence mode="popLayout">
+                      {filesToShow?.map((file) => {
+                        const uploading = props.allowAttachments && props.getFileUploadStatus ? props.getFileUploadStatus(file).uploading : false
+                        return (
+                          <FilePreview
+                            key={file.name + String(file.lastModified)}
+                            file={file}
+                            isUploading={uploading}
+                            onRemove={() => {
+                              props.setFiles((files) => {
+                                if (!files) return null
+                                const filtered = Array.from(files).filter((f) => f !== file)
+                                if (filtered.length === 0) return null
+                                return filtered
+                              })
+                            }}
+                            compact={false}
+                          />
+                        )
+                      })}
+                    </AnimatePresence>
+                    {remainingFileCount > 0 && (
+                      <span
+                        className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground bg-card"
+                        aria-label={`Plus ${remainingFileCount} more file${remainingFileCount === 1 ? "" : "s"}`}
+                      >
+                        +{remainingFileCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            )}
+
+            <div className="shrink-0 flex items-center gap-2">
+              {props.allowAttachments && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 cursor-pointer"
+                  aria-label="Attach a file"
+                  onClick={async () => {
+                    const files = await showFileUploadDialog()
+                    addFiles(files)
+                  }}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
               )}
-              aria-label="Send message"
-              disabled={props.value === "" || isGenerating}
-            >
-              <ArrowUp className="h-5 w-5" />
-            </Button>
-          )}
+              {isGenerating && stop ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 btn-new-chat-compact"
+                  aria-label="Stop generating"
+                  onClick={stop}
+                >
+                  <Square className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="icon"
+                  className={cn(
+                    "h-9 w-9 transition-opacity",
+                    "btn-new-chat-compact"
+                  )}
+                  aria-label="Send message"
+                  disabled={props.value === "" || isGenerating}
+                >
+                  <ArrowUp className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

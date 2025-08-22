@@ -28,8 +28,8 @@ import {
   MessageSquare, 
   X, 
   LogOut,
-  Sparkles,
-  Settings
+  Settings,
+  Brain
 } from "lucide-react";
 
 import { useAuthActions } from "@convex-dev/auth/react";
@@ -65,7 +65,7 @@ export default function ChatLayout({
       <Sidebar variant="inset" collapsible="icon" className="brand-sidebar">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <Brain className="h-6 w-6 text-primary" />
             <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">Master Prompt</span>
           </div>
           <Link 

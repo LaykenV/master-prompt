@@ -12,6 +12,9 @@ interface FilePreviewProps {
   isUserMessage?: boolean
   onRemove?: () => void
   isUploading?: boolean
+  compact?: boolean
+  hideRemove?: boolean
+  displayNameOverride?: string
 }
 
 export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
@@ -43,8 +46,10 @@ export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 )
 FilePreview.displayName = "FilePreview"
 
+// Rows are visually aligned via fixed sizing in classNames; no constants needed
+
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove, isUploading }, ref) => {
+  ({ file, onRemove, isUploading, compact, hideRemove, displayNameOverride }, ref) => {
     const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
     useEffect(() => {
       if (!file) return
@@ -59,37 +64,40 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
+        className={
+          "relative flex items-center rounded-md border bg-card/80 p-1.5 text-[11px] " +
+          (compact ? "h-8 max-w-[160px]" : "h-9 max-w-[220px]")
+        }
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: "100%" }}
       >
-        <div className="flex w-full items-center space-x-2">
+        <div className="flex w-full items-center gap-2 min-w-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {previewUrl ? (
             <img
               alt={`Attachment ${file.name}`}
-              className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image object-cover"
+              className={"h-6 w-6 shrink-0 rounded-md object-cover"}
               src={previewUrl}
             />
           ) : (
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image" />
+            <div className="h-6 w-6 shrink-0 rounded-md bg-muted" />
           )}
           <span className="w-full truncate text-foreground/80">
-            {file.name}
+            {displayNameOverride ?? file.name}
           </span>
         </div>
 
         {isUploading ? (
-          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+          <div className="absolute inset-0 rounded bg-background/60 backdrop-blur-sm grid place-items-center">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : null}
 
-        {onRemove ? (
+        {onRemove && !hideRemove ? (
           <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"
             onClick={onRemove}
             aria-label="Remove attachment"
@@ -104,7 +112,7 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 ImageFilePreview.displayName = "ImageFilePreview"
 
 const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove, isUploading }, ref) => {
+  ({ file, onRemove, isUploading, compact, hideRemove, displayNameOverride }, ref) => {
     const [preview, setPreview] = React.useState<string>("")
 
     useEffect(() => {
@@ -123,32 +131,35 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
+        className={
+          "relative flex items-center rounded-md border bg-card/80 p-1.5 text-[11px] " +
+          (compact ? "h-8 max-w-[200px]" : "h-9 max-w-[240px]")
+        }
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: "100%" }}
       >
-        <div className="flex w-full items-center space-x-2">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image p-1">
-            <div className="h-full w-full overflow-hidden text-[6px] leading-none text-muted-foreground">
+        <div className="flex w-full items-center gap-2 min-w-0">
+          <div className="h-6 w-6 shrink-0 rounded bg-muted grid place-items-center">
+            <div className="h-full w-full overflow-hidden text-[6px] leading-none text-muted-foreground p-0.5">
               {preview || "Loading..."}
             </div>
           </div>
           <span className="w-full truncate text-foreground/80">
-            {file.name}
+            {displayNameOverride ?? file.name}
           </span>
         </div>
 
         {isUploading ? (
-          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+          <div className="absolute inset-0 rounded bg-background/60 backdrop-blur-sm grid place-items-center">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : null}
 
-        {onRemove ? (
+        {onRemove && !hideRemove ? (
           <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"
             onClick={onRemove}
             aria-label="Remove attachment"
@@ -163,36 +174,39 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 TextFilePreview.displayName = "TextFilePreview"
 
 const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  ({ file, onRemove, isUploading }, ref) => {
+  ({ file, onRemove, isUploading, compact, hideRemove, displayNameOverride }, ref) => {
     if (!file) return null;
     
     return (
       <motion.div
         ref={ref}
-        className="relative flex max-w-[240px] rounded-lg p-2 pr-3 text-xs attachment-card"
+        className={
+          "relative flex items-center rounded-md border bg-card/80 p-1.5 text-[11px] " +
+          (compact ? "h-8 max-w-[200px]" : "h-9 max-w-[240px]")
+        }
         layout
         initial={{ opacity: 0, y: "100%" }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: "100%" }}
       >
-        <div className="flex w-full items-center space-x-2">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-md attachment-image">
-            <FileIcon className="h-7 w-7 text-foreground" />
+        <div className="flex w-full items-center gap-2 min-w-0">
+          <div className="h-6 w-6 shrink-0 rounded bg-muted grid place-items-center">
+            <FileIcon className={"h-4 w-4 text-foreground"} />
           </div>
           <span className="w-full truncate text-foreground/80">
-            {file.name}
+            {displayNameOverride ?? file.name}
           </span>
         </div>
 
         {isUploading ? (
-          <div className="absolute inset-0 rounded-md bg-background/60 backdrop-blur-sm grid place-items-center">
+          <div className="absolute inset-0 rounded bg-background/60 backdrop-blur-sm grid place-items-center">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : null}
 
-        {onRemove ? (
+        {onRemove && !hideRemove ? (
           <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
+            className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
             type="button"
             onClick={onRemove}
             aria-label="Remove attachment"

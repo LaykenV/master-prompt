@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Bot, Sparkles } from "lucide-react";
+import { ChevronDown, Bot } from "lucide-react";
 import { getModelIcon, getProviderIcon, ModelId } from "@/convex/agent";
 // no search input
 
@@ -212,20 +212,13 @@ export function ModelPicker({
           className={`flex items-center gap-2 surface-trigger ${className}`}
         >
           <span className="inline-flex items-center gap-2">
-            <span className="text-lg">
-              {getIcon(multiSelectState.master, masterModelInfo?.provider)}
-            </span>
-            <span className="text-sm font-medium">
+            <span className="font-medium text-xs sm:text-base">
               {masterModelInfo?.displayName || multiSelectState.master}
             </span>
           </span>
           {secondaryInfos.length > 0 && (
             <span className="ml-1 hidden sm:inline-flex items-center gap-1">
-              {secondaryInfos.slice(0, 3).map((m) => (
-                <span key={`sec-icon-${m.id}`} className="text-base opacity-80">
-                  {getIcon(m.id, m.provider)}
-                </span>
-              ))}
+              
               {secondaryInfos.length > 3 && (
                 <span className="text-[10px] px-1 py-0.5 rounded bg-secondary text-secondary-foreground">
                   +{secondaryInfos.length - 3}
@@ -233,7 +226,13 @@ export function ModelPicker({
               )}
             </span>
           )}
-          <span className="ml-1 text-xs text-muted-foreground">{totalSelected} selected</span>
+          {/* Compact selection label: number only on mobile, full text on larger screens */}
+          <span className="ml-1 text-[10px] font-medium text-muted-foreground inline sm:hidden">
+            {totalSelected}
+          </span>
+          <span className="ml-1 text-xs text-muted-foreground hidden sm:inline">
+            {totalSelected} selected
+          </span>
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
@@ -271,7 +270,7 @@ export function ModelPicker({
                           </div>
                           {isPrimary && (
                             <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-[11px] shadow">
-                              <Sparkles className="h-3.5 w-3.5" /> Primary
+                               Primary
                             </span>
                           )}
                         </button>
@@ -326,7 +325,7 @@ export function ModelPicker({
                             </div>
                             {isPrimary && (
                               <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-[11px] shadow">
-                                <Sparkles className="h-3.5 w-3.5" /> Primary
+                               Primary
                               </span>
                             )}
                           </button>

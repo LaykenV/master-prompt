@@ -2,22 +2,26 @@
 
 
 //multi response ui
-magic ui component 
+//magic ui component 
+perfect it
 name logo
-settings page
-landing page
-
-
-test everything
 add other models
 perfect markdown rendering and auto scroll and fonts
 thread title call
 
+polar? how to handle subs and token tracking?
+rate limiting?
+
+test everything
+
+settings page
+landing page
+
 auth migration?
 
 
-polar? how to handle subs and token tracking?
-rate limiting?
+
+routing?
 
 img gen?
 

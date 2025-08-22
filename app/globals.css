@@ -852,4 +852,10 @@
   }
   .final-compact-title { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.85rem; }
   .final-compact-body { margin-top: 0.25rem; color: hsl(var(--muted-foreground)); font-size: 0.9rem; }
+  
+  /* Beams overlay helper to blend lines softly above content */
+  .beams-overlay {
+    mix-blend-mode: normal;
+    pointer-events: none;
+  }
 }
