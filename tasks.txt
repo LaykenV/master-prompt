@@ -3,11 +3,13 @@
 
 //multi response ui
 //magic ui component 
+fix file preview and text paste
 perfect it
 name logo
 add other models
 perfect markdown rendering and auto scroll and fonts
 thread title call
+theme toggle expanded, delete thread, light mode selected thread color
 
 polar? how to handle subs and token tracking?
 rate limiting?

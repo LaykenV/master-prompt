@@ -219,7 +219,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   <div className="relative">
                     <div ref={finalTopAnchorRef} className="absolute left-1/2 -top-2 -translate-x-1/2 h-0 w-0" />
                     {finalCollapsed ? (
-                      <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText="" showSpinner={debateComplete} onExpand={() => setFinalCollapsed(false)} />
+                      <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText="" debateComplete={debateComplete} onExpand={() => setFinalCollapsed(false)} />
                     ) : (
                       <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={debateComplete ? (multiModelRun.runSummary || "") : ""} />
                     )}
@@ -249,7 +249,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                     containerRef={containerRef}
                     fromRef={ensureRunRef(initialBottomAnchorRefs, fromRun.threadId)}
                     toRef={ensureRunRef(debateTopAnchorRefs, toRun.threadId)}
-                    curvature={10}
+                    curvature={5}
                     pathOpacity={0.18}
                     pathWidth={2}
                     pathColor="hsl(var(--primary))"
@@ -257,14 +257,10 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   gradientStopColor="#60a5fa"
                     duration={4.5}
                     delay={0}
-                    showFlow
-                    flowDuration={3}
                     showNodes
                     nodeRadius={3.5}
                     glow
                     glowOpacity={0.25}
-                    dashLength={10}
-                    dashGap={14}
                     revealProgress={revealProgressRef.current[`i:${fromRun.threadId}->${toRun.threadId}`] ?? 0}
                   />
                 )),
@@ -288,14 +284,10 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   gradientStopColor="#60a5fa"
                   duration={4.5}
                   delay={0.1}
-                  showFlow
-                  flowDuration={3.2}
                   showNodes
                   nodeRadius={3.5}
                   glow
                   glowOpacity={0.28}
-                  dashLength={10}
-                  dashGap={14}
                   revealProgress={revealProgressRef.current[`f:${run.threadId}`] ?? 0}
                 />
               ))}
@@ -543,15 +535,15 @@ function CollapsedWholeCard({ initialComplete, debateStarted, debateComplete, on
   );
 }
 
-function FinalSummaryCompactCard({ structured, fallbackText, onExpand, showSpinner = false }: { structured?: { overview?: string; crossModel: { convergenceSummary: string } }, fallbackText?: string, onExpand?: () => void, showSpinner?: boolean }) {
+function FinalSummaryCompactCard({ structured, fallbackText, onExpand, debateComplete = false }: { structured?: { overview?: string; crossModel: { convergenceSummary: string } }, fallbackText?: string, onExpand?: () => void, debateComplete?: boolean }) {
   const overview = structured?.overview || structured?.crossModel.convergenceSummary || fallbackText || "";
-  const isLoading = showSpinner && overview.trim().length === 0;
+  const finalReady = overview.trim().length > 0;
   return (
     <div
       className="collapsed-card"
       role="button"
       aria-label="Final summary compact"
-      aria-busy={isLoading}
+      aria-busy={debateComplete && !finalReady}
       tabIndex={0}
       onClick={onExpand}
       onKeyDown={(e) => {
@@ -561,7 +553,13 @@ function FinalSummaryCompactCard({ structured, fallbackText, onExpand, showSpinn
       <div className="final-compact-title">
         <Brain className="h-4 w-4 text-primary" />
         <span>Final overview</span>
-        {isLoading ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : <CheckCircle2 className="h-3 w-3 text-green-600" />}
+        {debateComplete ? (
+          finalReady ? (
+            <CheckCircle2 className="h-3 w-3 text-green-600" />
+          ) : (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+          )
+        ) : null}
       </div>
       <div className="final-compact-body">
        {overview}

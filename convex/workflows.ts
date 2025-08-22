@@ -80,7 +80,6 @@ export const multiModelGeneration = workflow.define({
       step.runAction(internal.workflows.generateDebateResponse, {
         threadId: allThreadIds[index],
         modelId,
-        originalPrompt: prompt,
         // Provide the responses from all OTHER models for peer review
         otherResponses: initialResponsesWithMeta.filter((_, i) => i !== index),
         userId,
@@ -290,7 +289,6 @@ export const generateDebateResponse = internalAction({
   args: {
     threadId: v.string(),
     modelId: MODEL_ID_SCHEMA,
-    originalPrompt: v.string(),
     otherResponses: v.array(v.object({
       modelId: MODEL_ID_SCHEMA,
       response: v.string(),
@@ -299,13 +297,11 @@ export const generateDebateResponse = internalAction({
     masterMessageId: v.string(),
   },
   returns: v.string(),
-  handler: async (ctx, { threadId, modelId, originalPrompt, otherResponses, userId, masterMessageId }) => {
+  handler: async (ctx, { threadId, modelId, otherResponses, userId, masterMessageId }) => {
     try {
       // Construct the debate prompt using the research paper's methodology
       const debatePrompt = `
-**Original Question:**
-${originalPrompt}
-
+**Remember the original question:**
 ---
 Here are the solutions to the problem from other agents. Your task is to critically re-evaluate your own initial answer in light of these other perspectives.
 

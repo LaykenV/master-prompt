@@ -24,14 +24,14 @@ export interface AnimatedBeamProps {
   endXOffset?: number;
   endYOffset?: number;
   // Visual polish
-  showFlow?: boolean; // animated dashes indicating direction
-  flowDuration?: number; // seconds for one dash cycle
+  showFlow?: boolean; // legacy: dash overlay (disabled)
+  flowDuration?: number; // legacy
   showNodes?: boolean; // render endpoint nodes
   nodeRadius?: number;
   glow?: boolean; // draw a soft glow under the line
   glowOpacity?: number; // 0..1
-  dashLength?: number; // px
-  dashGap?: number; // px
+  dashLength?: number; // legacy
+  dashGap?: number; // legacy
   // Reveal animation
   revealProgress?: number; // 0..1 length grown along the path
 }
@@ -54,14 +54,10 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
   startYOffset = 0,
   endXOffset = 0,
   endYOffset = 0,
-  showFlow = true,
-  flowDuration = 3.2,
   showNodes = true,
   nodeRadius = 3.5,
   glow = true,
   glowOpacity = 0.28,
-  dashLength = 8,
-  dashGap = 12,
   revealProgress = 1,
 }) => {
   const id = useId();
@@ -215,36 +211,25 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         mask={`url(#${maskId})`}
       />
 
-      {/* Flowing dash overlay */}
-      {showFlow && (
-        <motion.path
-          d={pathD}
-          stroke={gradientStopColor}
-          strokeWidth={Math.max(1, pathWidth - 0.5)}
-          strokeLinecap="round"
-          strokeOpacity={0.9}
-          strokeDasharray={`${dashLength} ${dashGap}`}
-          initial={{ strokeDashoffset: 0 }}
-          animate={{ strokeDashoffset: reverse ? [0, dashLength + dashGap] : [0, -(dashLength + dashGap)] }}
-          transition={{ duration: flowDuration, repeat: Infinity, ease: "linear" }}
-          mask={`url(#${maskId})`}
-        />
-      )}
-
       {/* Endpoint nodes */}
-      {showNodes && endpoints && (
+      {showNodes && endpoints && Math.max(0, Math.min(1, revealProgress)) > 0.001 && (
         <>
           {/* Start node */}
           {glow && (
-            <circle
+            <motion.circle
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.6, opacity: glowOpacity }}
+              transition={{ type: "spring", stiffness: 160, damping: 18 }}
               cx={endpoints.startX}
               cy={endpoints.startY}
               r={nodeRadius * 2}
               fill={gradientStartColor}
-              opacity={glowOpacity}
             />
           )}
-          <circle
+          <motion.circle
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 16 }}
             cx={endpoints.startX}
             cy={endpoints.startY}
             r={nodeRadius}
@@ -253,15 +238,20 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
           />
           {/* End node */}
           {glow && (
-            <circle
+            <motion.circle
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1.6, opacity: glowOpacity }}
+              transition={{ type: "spring", stiffness: 160, damping: 18, delay: 0.05 }}
               cx={endpoints.endX}
               cy={endpoints.endY}
               r={nodeRadius * 2}
               fill={gradientStopColor}
-              opacity={glowOpacity}
             />
           )}
-          <circle
+          <motion.circle
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 16, delay: 0.05 }}
             cx={endpoints.endX}
             cy={endpoints.endY}
             r={nodeRadius}
