@@ -4,24 +4,22 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Sparkles, CheckCircle2, Loader2, AlertCircle, X } from "lucide-react";
 import { getModelIcon, getProviderIcon } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
 import { MessageBubble } from "./MessageBubble";
+ 
 
 interface MultiResponseMessageProps {
   masterMessageId: string;
-  originalPrompt: string;
 }
 
-export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiResponseMessageProps) {
+export function MultiResponseMessage({ masterMessageId }: MultiResponseMessageProps) {
   const multiModelRun = useQuery(api.chat.getMultiModelRun, { masterMessageId });
   const availableModels = useQuery(api.chat.getAvailableModels);
-  const [showAllResponses, setShowAllResponses] = useState(true);
+  const [details, setDetails] = useState<{ threadId: string; stage: "initial" | "debate" } | null>(null);
   
   if (!multiModelRun) {
     return null;
@@ -40,88 +38,159 @@ export function MultiResponseMessage({ masterMessageId, originalPrompt }: MultiR
       return getProviderIcon(provider || "");
     }
   };
+  // Derived flags (no hooks to avoid conditional hook calls)
+  const allLeftInitial = multiModelRun.allRuns.every(r => r.status !== "initial");
+  const allDone = multiModelRun.allRuns.every(r => r.status === "complete" || r.status === "error");
+
+  const selectedRun = details ? multiModelRun.allRuns.find(r => r.threadId === details.threadId) : null;
 
   return (
     <Card className="w-full border-2 border-dashed border-primary/20 bg-muted/30 transition-colors hover:bg-muted/40">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">
-              Multi-Model Response
-            </CardTitle>
-            <Badge variant="secondary" className="text-xs">
-              {multiModelRun.allRuns.length} models
-            </Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowAllResponses(!showAllResponses)}
-            className="text-xs"
-          >
-            {showAllResponses ? (
-              <>
-                <EyeOff className="h-3 w-3 mr-1" />
-                Hide Individual
-              </>
-            ) : (
-              <>
-                <Eye className="h-3 w-3 mr-1" />
-                Show Individual
-              </>
-            )}
-          </Button>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          <strong>Your question:</strong> {originalPrompt}
-        </div>
-      </CardHeader>
-      
-      {showAllResponses && (
-        <CardContent className="pt-0">
-          <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all" className="text-xs">All Responses</TabsTrigger>
-              {multiModelRun.allRuns.slice(0, 3).map((run) => (
-                <TabsTrigger key={run.threadId} value={run.threadId} className="text-xs">
-                  {getModelInfo(run.modelId)?.displayName || run.modelId}
-                  {run.isMaster && " (Master)"}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            
-            <TabsContent value="all" className="mt-4 space-y-4">
-              <div className="grid gap-4">
-                {/* All sub-thread responses */}
-                {multiModelRun.allRuns.map((run) => (
-                  <ModelResponseCard
-                    key={run.threadId}
-                    threadId={run.threadId}
-                    modelId={run.modelId}
-                    modelInfo={getModelInfo(run.modelId)}
-                    isMaster={run.isMaster}
-                    getIcon={getIcon}
-                  />
-                ))}
-              </div>
-            </TabsContent>
-            
+      <CardContent className="pt-4 space-y-6">
+        {/* Initial Stage */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Initial responses</div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {multiModelRun.allRuns.map((run) => (
-              <TabsContent key={run.threadId} value={run.threadId} className="mt-4">
-                <ModelResponseCard
-                  threadId={run.threadId}
-                  modelId={run.modelId}
-                  modelInfo={getModelInfo(run.modelId)}
-                  isMaster={run.isMaster}
-                  getIcon={getIcon}
-                />
-              </TabsContent>
+              <RunStatusCard
+                key={`initial-${run.threadId}`}
+                stage="initial"
+                run={run}
+                modelInfo={getModelInfo(run.modelId)}
+                getIcon={getIcon}
+                onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "initial" })}
+              />
             ))}
-          </Tabs>
-        </CardContent>
+          </div>
+        </div>
+
+        {/* Debate Stage */}
+        {allLeftInitial && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">Debate round</div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {multiModelRun.allRuns.map((run) => (
+                <RunStatusCard
+                  key={`debate-${run.threadId}`}
+                  stage="debate"
+                  run={run}
+                  modelInfo={getModelInfo(run.modelId)}
+                  getIcon={getIcon}
+                  onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "debate" })}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Final Card */}
+        {allDone && (
+          <FinalStatusCard summary={multiModelRun.runSummary} />
+        )}
+
+        {/* Centered details modal */}
+        <RunDetailsModal
+          open={!!details}
+          onOpenChange={(open) => !open && setDetails(null)}
+          threadId={details?.threadId}
+          modelId={selectedRun?.modelId || ""}
+          modelInfo={selectedRun ? getModelInfo(selectedRun.modelId) : undefined}
+          isMaster={!!selectedRun?.isMaster}
+          getIcon={getIcon}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+function StatusIcon({ status, stage }: { status: "initial" | "debate" | "complete" | "error"; stage: "initial" | "debate" }) {
+  if (stage === "initial") {
+    if (status === "initial") return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+    if (status === "error") return <AlertCircle className="h-4 w-4 text-destructive" />;
+    return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+  }
+  // debate stage
+  if (status === "debate") return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  if (status === "complete") return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+  if (status === "error") return <AlertCircle className="h-4 w-4 text-destructive" />;
+  return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+}
+
+function RunStatusCard({
+  stage,
+  run,
+  modelInfo,
+  getIcon,
+  onSeeDetails,
+}: {
+  stage: "initial" | "debate";
+  run: { modelId: string; threadId: string; isMaster: boolean; status: "initial" | "debate" | "complete" | "error"; errorMessage?: string };
+  modelInfo?: { displayName: string; provider: string };
+  getIcon: (modelId: string, provider?: string) => string;
+  onSeeDetails: () => void;
+}) {
+  const label = stage === "initial" ? "Initial" : "Debate";
+  const isError = run.status === "error";
+  return (
+    <Card className={`p-3 surface-input ${run.isMaster ? 'border-primary/70' : ''}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-sm">{getIcon(run.modelId, modelInfo?.provider)}</span>
+        <div className="flex flex-col">
+          <div className="text-sm font-medium">{modelInfo?.displayName || run.modelId}{run.isMaster && " (Master)"}</div>
+          <div className="text-[11px] text-muted-foreground">{label}</div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <StatusIcon status={run.status} stage={stage} />
+        <button type="button" aria-label="See details" onClick={onSeeDetails} className="btn-new-chat-compact h-7 px-3 text-xs">
+          See details
+        </button>
+      </div>
+      {isError && (
+        <div className="text-[11px] text-destructive mt-2">{run.errorMessage || 'Error'}</div>
       )}
     </Card>
+  );
+}
+
+function FinalStatusCard({ summary }: { summary?: string }) {
+  return (
+    <Card className="p-4 border-primary/60">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Sparkles className="h-4 w-4 text-primary" /> Final response
+      </div>
+      <div className="mt-2 text-sm text-muted-foreground min-h-6">
+        {summary ? summary : (
+          <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Generating summary…</div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isMaster, getIcon }: { open: boolean; onOpenChange: (open: boolean) => void; threadId?: string; modelId?: string; modelInfo?: { displayName: string; provider: string }; isMaster?: boolean; getIcon: (modelId: string, provider?: string) => string }) {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => onOpenChange(false)}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-2">
+          <div className="text-sm font-medium">Run details</div>
+          <button aria-label="Close" className="modal-close cursor-pointer" onClick={() => onOpenChange(false)}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-2">
+          {threadId && (
+            <ModelResponseCard
+              threadId={threadId}
+              modelId={modelId || ""}
+              modelInfo={modelInfo}
+              isMaster={!!isMaster}
+              getIcon={getIcon}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -159,7 +228,7 @@ function ModelResponseCard({
   const shouldShowPendingAssistant = lastUserIndex !== -1 && !hasAssistantAfterLastUser;
 
   return (
-    <Card className={`transition-colors hover:bg-card/80 ${isMaster ? 'border-primary' : 'border-border'}`}>
+    <Card className={`transition-colors hover:bg-card/80 surface-input ${isMaster ? 'border-primary' : 'border-border'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>

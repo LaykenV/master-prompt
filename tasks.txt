@@ -29,6 +29,15 @@ loading spinners then checks
 before synthesis starts or same time, small fast model call to build table obj
 3 layers, initial responses, debate round, final card + table
 
+//add status to each run
+//add summaryFinished boolean or just summary field?
+//first row is initial response. when finished flip status and it will happen on ui
+then draw lines from each card to eachother for debate round
+then converge to single node for summary and table will render next to it. 
+//each node will link to expand the response
+change summary to an object and table
+do magicui component
+
 //clean up model name and logo into a config
 //figure out how to track tokens
 
@@ -40,17 +49,17 @@ before synthesis starts or same time, small fast model call to build table obj
 deploy to test mobile ui
 test new middleware
 
-build ui with elite model selector and look
-sidebar that opens on hover
-header from civicly
-floating dock?
-colors and design
+//build ui with elite model selector and look
+//sidebar that opens on hover
+//header from civicly
+//floating dock?
+//colors and design
 name and logo
 settings page
 landing page
-model selector ui
+//model selector ui
 multi response ui
-toast
+//toast
 
 test everything
 add other models
@@ -64,7 +73,4 @@ rate limiting?
 
 img gen?
 
-
-
-//retain model selection
-light mode too white 
+context cli creates md files

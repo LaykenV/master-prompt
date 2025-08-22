@@ -499,10 +499,15 @@ export const getMultiModelRun = query({
             masterMessageId: v.string(),
             masterThreadId: v.string(),
             masterModelId: MODEL_ID_SCHEMA,
+            runSummary: v.optional(v.string()),
             allRuns: v.array(v.object({
                 modelId: MODEL_ID_SCHEMA,
                 threadId: v.string(),
                 isMaster: v.boolean(),
+                status: v.union(v.literal("initial"), v.literal("debate"), v.literal("complete"), v.literal("error")),
+                initialPromptMessageId: v.optional(v.string()),
+                debatePromptMessageId: v.optional(v.string()),
+                errorMessage: v.optional(v.string()),
             })),
         })
     ),
@@ -531,10 +536,15 @@ export const getLatestMultiModelRunForThread = query({
             masterMessageId: v.string(),
             masterThreadId: v.string(),
             masterModelId: MODEL_ID_SCHEMA,
+            runSummary: v.optional(v.string()),
             allRuns: v.array(v.object({
                 modelId: MODEL_ID_SCHEMA,
                 threadId: v.string(),
                 isMaster: v.boolean(),
+                status: v.union(v.literal("initial"), v.literal("debate"), v.literal("complete"), v.literal("error")),
+                initialPromptMessageId: v.optional(v.string()),
+                debatePromptMessageId: v.optional(v.string()),
+                errorMessage: v.optional(v.string()),
             })),
         })
     ),
@@ -548,6 +558,31 @@ export const getLatestMultiModelRunForThread = query({
             .take(1);
 
         return page[0] ?? null;
+    },
+});
+
+// Helper: get exact run step info for modal anchoring
+export const getRunStepInfo = query({
+    args: {
+        masterMessageId: v.string(),
+        threadId: v.string(),
+        stage: v.union(v.literal("initial"), v.literal("debate")),
+    },
+    returns: v.union(
+        v.null(),
+        v.object({ threadId: v.string(), promptMessageId: v.string() })
+    ),
+    handler: async (ctx, { masterMessageId, threadId, stage }) => {
+        const run = await ctx.db
+            .query("multiModelRuns")
+            .withIndex("by_master_message", (q) => q.eq("masterMessageId", masterMessageId))
+            .unique();
+        if (!run) return null;
+        const r = run.allRuns.find((x) => x.threadId === threadId);
+        if (!r) return null;
+        const promptMessageId = stage === "initial" ? r.initialPromptMessageId : r.debatePromptMessageId;
+        if (!promptMessageId) return null;
+        return { threadId, promptMessageId };
     },
 });
 

@@ -5,6 +5,13 @@ import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA } from
 import { saveMessage, getFile } from "@convex-dev/agent";
 import { internalMutation, internalAction } from "./_generated/server";
 
+const RUN_STATUS = v.union(
+  v.literal("initial"),
+  v.literal("debate"),
+  v.literal("complete"),
+  v.literal("error"),
+);
+
 // Initialize the workflow manager
 // Type assertion needed due to API signature mismatch between workflow versions
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,6 +64,7 @@ export const multiModelGeneration = workflow.define({
         userId,
         isMaster: index === 0,
         fileIds,
+        masterMessageId,
       })
     );
     const initialResponses = await Promise.all(initialGenerationTasks);
@@ -75,12 +83,17 @@ export const multiModelGeneration = workflow.define({
         // Provide the responses from all OTHER models for peer review
         otherResponses: initialResponsesWithMeta.filter((_, i) => i !== index),
         userId,
+        masterMessageId,
       })
     );
     const refinedResponses = await Promise.all(debateGenerationTasks);
+    const refinedResponsesWithMeta = refinedResponses.map((response: string, index: number) => ({
+      modelId: allModelIds[index],
+      response,
+    }));
     
-    // Step 5: Generate final synthesis in the master thread using the REFINED responses
-    await step.runAction(internal.workflows.generateSynthesisResponse, {
+    // Step 5: Generate final synthesis and narrative summary in parallel
+    const synthesisPromise = step.runAction(internal.workflows.generateSynthesisResponse, {
       masterThreadId,
       originalPrompt: prompt,
       masterModelId,
@@ -92,6 +105,20 @@ export const multiModelGeneration = workflow.define({
       })),
       userId,
     });
+    const summaryPromise = step.runAction(internal.workflows.generateRunSummary, {
+      masterThreadId,
+      masterModelId,
+      originalPrompt: prompt,
+      initialResponses: initialResponsesWithMeta,
+      refinedResponses: refinedResponsesWithMeta,
+    });
+    const [, summaryText] = await Promise.all([synthesisPromise, summaryPromise]);
+    if (summaryText && typeof summaryText === "string") {
+      await step.runMutation(internal.workflows.setRunSummary, {
+        masterMessageId,
+        summary: summaryText,
+      });
+    }
   },
 });
 
@@ -133,8 +160,47 @@ export const recordMultiModelRun = internalMutation({
       masterMessageId,
       masterThreadId,
       masterModelId,
-      allRuns,
+      allRuns: allRuns.map((r) => ({
+        ...r,
+        status: "initial" as const,
+      })),
     });
+    return null;
+  },
+});
+
+// Update per-run status and stage prompt ids
+export const updateRunStatus = internalMutation({
+  args: {
+    masterMessageId: v.string(),
+    threadId: v.string(),
+    status: RUN_STATUS,
+    promptMessageId: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, { masterMessageId, threadId, status, promptMessageId, errorMessage }) => {
+    const run = await ctx.db
+      .query("multiModelRuns")
+      .withIndex("by_master_message", (q) => q.eq("masterMessageId", masterMessageId))
+      .unique();
+    if (!run) return null;
+    const updatedRuns = run.allRuns.map((r) => {
+      if (r.threadId !== threadId) return r;
+      const patch: Record<string, unknown> = { ...r, status };
+      if (typeof promptMessageId === "string") {
+        if (status === "initial") {
+          patch.initialPromptMessageId = promptMessageId;
+        } else if (status === "debate") {
+          patch.debatePromptMessageId = promptMessageId;
+        }
+      }
+      if (status === "error" && errorMessage) {
+        patch.errorMessage = errorMessage;
+      }
+      return patch as typeof r;
+    });
+    await ctx.db.patch(run._id, { allRuns: updatedRuns });
     return null;
   },
 });
@@ -148,9 +214,10 @@ export const generateModelResponse = internalAction({
     userId: v.id("users"),
     isMaster: v.boolean(),
     fileIds: v.optional(v.array(v.string())),
+    masterMessageId: v.string(),
   },
   returns: v.string(),
-  handler: async (ctx, { threadId, modelId, prompt, userId, fileIds }) => {
+  handler: async (ctx, { threadId, modelId, prompt, userId, fileIds, masterMessageId }) => {
     try {
       // For ALL models (including master), save the initial prompt message to their sub-thread
       let messageId: string;
@@ -188,6 +255,14 @@ export const generateModelResponse = internalAction({
         messageId = result.messageId;
       }
 
+      // Update status to initial with prompt id
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "initial",
+        promptMessageId: messageId,
+      });
+
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);
       
@@ -195,9 +270,22 @@ export const generateModelResponse = internalAction({
       const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
       await result.consumeStream();
       
+      // After streaming completes, advance status to debate
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "debate",
+      });
+
       return result.text;
     } catch (error) {
       console.error(`Error generating response for model ${modelId}:`, error);
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
       return `Error generating response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${error instanceof Error ? error.message : String(error)}`;
     }
   },
@@ -214,9 +302,10 @@ export const generateDebateResponse = internalAction({
       response: v.string(),
     })),
     userId: v.id("users"),
+    masterMessageId: v.string(),
   },
   returns: v.string(),
-  handler: async (ctx, { threadId, modelId, originalPrompt, otherResponses, userId }) => {
+  handler: async (ctx, { threadId, modelId, originalPrompt, otherResponses, userId, masterMessageId }) => {
     try {
       // Construct the debate prompt using the research paper's methodology
       const debatePrompt = `
@@ -243,15 +332,36 @@ Using the reasoning from these other agents as additional advice, provide an upd
         prompt: debatePrompt,
       });
 
+      // Update status remains debate, attach debate prompt id
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "debate",
+        promptMessageId: messageId,
+      });
+
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);
       const { thread } = await agent.continueThread(ctx, { threadId });
       const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
       await result.consumeStream();
       
+      // After streaming completes, mark run as complete
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "complete",
+      });
+
       return result.text;
     } catch (error) {
       console.error(`Error generating DEBATE response for model ${modelId}:`, error);
+      await ctx.runMutation(internal.workflows.updateRunStatus, {
+        masterMessageId,
+        threadId,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
       return `Error generating debate response from ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${error instanceof Error ? error.message : String(error)}`;
     }
   },
@@ -326,5 +436,47 @@ Synthesize these peer-reviewed conclusions into a single, comprehensive, and aut
       
       return null;
     }
+  },
+});
+
+// Generate a concise narrative summary of the run dynamics
+export const generateRunSummary = internalAction({
+  args: {
+    masterThreadId: v.string(),
+    masterModelId: MODEL_ID_SCHEMA,
+    originalPrompt: v.string(),
+    initialResponses: v.array(v.object({ modelId: MODEL_ID_SCHEMA, response: v.string() })),
+    refinedResponses: v.array(v.object({ modelId: MODEL_ID_SCHEMA, response: v.string() })),
+  },
+  returns: v.string(),
+  handler: async (ctx, { masterThreadId, masterModelId, originalPrompt, initialResponses, refinedResponses }) => {
+    try {
+      const agent = createAgentWithModel(masterModelId as ModelId);
+      const { thread } = await agent.continueThread(ctx, { threadId: masterThreadId });
+      const prompt = `Summarize the cross-model dynamics for the following task. Identify agreements/disagreements initially and how positions changed after the debate. Keep it concise and factual.\n\nOriginal prompt:\n${originalPrompt}\n\nInitial responses:\n${initialResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}\n\nRefined (debate) responses:\n${refinedResponses.map(({ modelId, response }) => `- ${AVAILABLE_MODELS[modelId as ModelId].displayName}: ${response}`).join("\n")}`;
+      const result = await thread.generateText({ prompt }, { storageOptions: { saveMessages: "none" } });
+      return result.text ?? "";
+    } catch (error) {
+      console.error("Error generating run summary:", error);
+      return "";
+    }
+  },
+});
+
+// Save the narrative summary to the run document
+export const setRunSummary = internalMutation({
+  args: {
+    masterMessageId: v.string(),
+    summary: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { masterMessageId, summary }) => {
+    const run = await ctx.db
+      .query("multiModelRuns")
+      .withIndex("by_master_message", (q) => q.eq("masterMessageId", masterMessageId))
+      .unique();
+    if (!run) return null;
+    await ctx.db.patch(run._id, { runSummary: summary });
+    return null;
   },
 });
