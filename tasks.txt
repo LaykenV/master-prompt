@@ -1,11 +1,11 @@
 
 
 
-multi response ui
-magic ui component
+//multi response ui
+magic ui component 
+name logo
 settings page
 landing page
-name logo
 
 
 test everything

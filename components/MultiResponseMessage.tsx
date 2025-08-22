@@ -3,13 +3,14 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
-import { useState } from "react";
+import { useState, useRef, createRef, MutableRefObject, RefObject } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, CheckCircle2, Loader2, AlertCircle, X } from "lucide-react";
 import { getModelIcon, getProviderIcon } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
 import { MessageBubble } from "./MessageBubble";
+import { AnimatedBeam } from "@/components/magicui/animated-beam";
  
 
 interface MultiResponseMessageProps {
@@ -22,6 +23,23 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   const [details, setDetails] = useState<{ threadId: string; stage: "initial" | "debate" } | null>(null);
   const [collapsedAll, setCollapsedAll] = useState<boolean>(false);
   const [finalCollapsed, setFinalCollapsed] = useState<boolean>(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const initialCardRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
+  const debateCardRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
+  const initialBottomAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
+  const debateTopAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
+  const debateBottomAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
+  const finalTopAnchorRef = useRef<HTMLDivElement>(null);
+
+  const ensureRunRef = (
+    mapRef: MutableRefObject<Record<string, RefObject<HTMLDivElement | null>>>,
+    key: string,
+  ): RefObject<HTMLDivElement | null> => {
+    if (!mapRef.current[key]) {
+      mapRef.current[key] = createRef<HTMLDivElement>();
+    }
+    return mapRef.current[key];
+  };
   
   if (!multiModelRun) {
     return null;
@@ -52,99 +70,152 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   return (
     <Card className="w-full border-2 border-dashed border-primary/20 bg-muted/30 transition-colors hover:bg-muted/40">
       <CardContent className="pt-4 space-y-6">
-        {/* Top actions */}
-        <div className="flex items-center justify-end">
-          <button
-            type="button"
-            className="toggle-btn cursor-pointer"
-            onClick={() => setCollapsedAll((v) => !v)}
-            aria-pressed={collapsedAll}
-          >
-            {collapsedAll ? "Expand details" : "Minimize"}
-          </button>
-        </div>
-
-        {/* Collapsed whole run card */}
-        {collapsedAll && (
-          <CollapsedWholeCard
-            initialComplete={initialComplete}
-            debateStarted={debateStarted}
-            debateComplete={debateComplete}
-            onExpand={() => setCollapsedAll(false)}
-          />
-        )}
-
-        {!collapsedAll && (
-          <>
-        {/* Initial Stage */}
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Initial responses</div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {multiModelRun.allRuns.map((run) => (
-              <RunStatusCard
-                key={`initial-${run.threadId}`}
-                stage="initial"
-                run={run}
-                modelInfo={getModelInfo(run.modelId)}
-                getIcon={getIcon}
-                onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "initial" })}
-              />
-            ))}
+        <div ref={containerRef} className="relative space-y-8 md:space-y-10">
+          {/* Top actions */}
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              className="toggle-btn cursor-pointer"
+              onClick={() => setCollapsedAll((v) => !v)}
+              aria-pressed={collapsedAll}
+            >
+              {collapsedAll ? "Expand details" : "Minimize"}
+            </button>
           </div>
-        </div>
 
-        {/* Debate Stage */}
-        {allLeftInitial && (
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Debate round</div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Collapsed whole run card */}
+          {collapsedAll && (
+            <CollapsedWholeCard
+              initialComplete={initialComplete}
+              debateStarted={debateStarted}
+              debateComplete={debateComplete}
+              onExpand={() => setCollapsedAll(false)}
+            />
+          )}
+
+          {!collapsedAll && (
+            <>
+              {/* Initial Stage */}
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">Initial responses</div>
+                <div className="relative z-10 grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {multiModelRun.allRuns.map((run) => (
+                    <RunStatusCard
+                      key={`initial-${run.threadId}`}
+                      stage="initial"
+                      run={run}
+                      modelInfo={getModelInfo(run.modelId)}
+                      getIcon={getIcon}
+                      onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "initial" })}
+                      nodeRef={ensureRunRef(initialCardRefs, run.threadId)}
+                      anchorBottomRef={ensureRunRef(initialBottomAnchorRefs, run.threadId)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Debate Stage */}
+              {allLeftInitial && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground">Debate round</div>
+                  <div className="relative z-10 grid gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {multiModelRun.allRuns.map((run) => (
+                      <RunStatusCard
+                        key={`debate-${run.threadId}`}
+                        stage="debate"
+                        run={run}
+                        modelInfo={getModelInfo(run.modelId)}
+                        getIcon={getIcon}
+                        onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "debate" })}
+                        nodeRef={ensureRunRef(debateCardRefs, run.threadId)}
+                        anchorTopRef={ensureRunRef(debateTopAnchorRefs, run.threadId)}
+                        anchorBottomRef={ensureRunRef(debateBottomAnchorRefs, run.threadId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Final Summary Table */}
+              {allDone && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      className="toggle-btn cursor-pointer"
+                      onClick={() => setFinalCollapsed((v) => !v)}
+                      aria-pressed={finalCollapsed}
+                    >
+                      {finalCollapsed ? "Expand final" : "Minimize final"}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <div ref={finalTopAnchorRef} className="absolute left-1/2 -top-2 -translate-x-1/2 h-0 w-0" />
+                    {finalCollapsed ? (
+                      <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} onExpand={() => setFinalCollapsed(false)} />
+                    ) : (
+                      <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Centered details modal */}
+              <RunDetailsModal
+                open={!!details}
+                onOpenChange={(open) => !open && setDetails(null)}
+                threadId={details?.threadId}
+                modelId={selectedRun?.modelId || ""}
+                modelInfo={selectedRun ? getModelInfo(selectedRun.modelId) : undefined}
+                isMaster={!!selectedRun?.isMaster}
+                getIcon={getIcon}
+              />
+            </>
+          )}
+
+          {/* Animated beams overlay (behind cards, hidden on mobile) */}
+          {!collapsedAll && allLeftInitial && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0">
+              {multiModelRun.allRuns.flatMap((fromRun) =>
+                multiModelRun.allRuns.map((toRun) => (
+                  <AnimatedBeam
+                    key={`beam-init-${fromRun.threadId}-${toRun.threadId}`}
+                    containerRef={containerRef}
+                    fromRef={ensureRunRef(initialBottomAnchorRefs, fromRun.threadId)}
+                    toRef={ensureRunRef(debateTopAnchorRefs, toRun.threadId)}
+                    curvature={0}
+                    pathOpacity={0.2}
+                    pathColor="hsl(var(--primary))"
+                    gradientStartColor="#60a5fa"
+                    gradientStopColor="#a78bfa"
+                    duration={4.5}
+                    delay={0}
+                  />
+                )),
+              )}
+            </div>
+          )}
+
+          {!collapsedAll && allDone && (
+            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0">
               {multiModelRun.allRuns.map((run) => (
-                <RunStatusCard
-                  key={`debate-${run.threadId}`}
-                  stage="debate"
-                  run={run}
-                  modelInfo={getModelInfo(run.modelId)}
-                  getIcon={getIcon}
-                  onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "debate" })}
+                <AnimatedBeam
+                  key={`beam-debate-${run.threadId}-final`}
+                  containerRef={containerRef}
+                  fromRef={ensureRunRef(debateBottomAnchorRefs, run.threadId)}
+                  toRef={finalTopAnchorRef}
+                  curvature={0}
+                  pathOpacity={0.22}
+                  pathColor="hsl(var(--primary))"
+                  gradientStartColor="#34d399"
+                  gradientStopColor="#60a5fa"
+                  duration={4.5}
+                  delay={0.1}
                 />
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Final Summary Table */}
-        {allDone && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                className="toggle-btn cursor-pointer"
-                onClick={() => setFinalCollapsed((v) => !v)}
-                aria-pressed={finalCollapsed}
-              >
-                {finalCollapsed ? "Expand final" : "Minimize final"}
-              </button>
-            </div>
-            {finalCollapsed ? (
-              <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} onExpand={() => setFinalCollapsed(false)} />
-            ) : (
-              <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
-            )}
-          </div>
-        )}
-
-        {/* Centered details modal */}
-        <RunDetailsModal
-          open={!!details}
-          onOpenChange={(open) => !open && setDetails(null)}
-          threadId={details?.threadId}
-          modelId={selectedRun?.modelId || ""}
-          modelInfo={selectedRun ? getModelInfo(selectedRun.modelId) : undefined}
-          isMaster={!!selectedRun?.isMaster}
-          getIcon={getIcon}
-        />
-          </>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -168,34 +239,46 @@ function RunStatusCard({
   modelInfo,
   getIcon,
   onSeeDetails,
+  nodeRef,
+  anchorTopRef,
+  anchorBottomRef,
 }: {
   stage: "initial" | "debate";
   run: { modelId: string; threadId: string; isMaster: boolean; status: "initial" | "debate" | "complete" | "error"; errorMessage?: string };
   modelInfo?: { displayName: string; provider: string };
   getIcon: (modelId: string, provider?: string) => string;
   onSeeDetails: () => void;
+  nodeRef?: RefObject<HTMLDivElement | null>;
+  anchorTopRef?: RefObject<HTMLDivElement | null>;
+  anchorBottomRef?: RefObject<HTMLDivElement | null>;
 }) {
   const label = stage === "initial" ? "Initial" : "Debate";
   const isError = run.status === "error";
   return (
-    <Card className={`p-3 surface-input ${run.isMaster ? 'border-primary/70' : ''}`}>
-      <div className="flex items-center gap-2">
-        <span className="text-sm">{getIcon(run.modelId, modelInfo?.provider)}</span>
-        <div className="flex flex-col">
-          <div className="text-sm font-medium">{modelInfo?.displayName || run.modelId}{run.isMaster && " (Master)"}</div>
-          <div className="text-[11px] text-muted-foreground">{label}</div>
+    <div ref={nodeRef} className="relative">
+      {/* Top anchor for beams */}
+      {anchorTopRef && <div ref={anchorTopRef} className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1 h-0 w-0" />}
+      <Card className={`p-3 surface-input ${run.isMaster ? 'border-primary/70' : ''}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">{getIcon(run.modelId, modelInfo?.provider)}</span>
+          <div className="flex flex-col">
+            <div className="text-sm font-medium">{modelInfo?.displayName || run.modelId}{run.isMaster && " (Master)"}</div>
+            <div className="text-[11px] text-muted-foreground">{label}</div>
+          </div>
         </div>
-      </div>
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <StatusIcon status={run.status} stage={stage} />
-        <button type="button" aria-label="See details" onClick={onSeeDetails} className="btn-new-chat-compact h-7 px-3 text-xs">
-          Open Thread
-        </button>
-      </div>
-      {isError && (
-        <div className="text-[11px] text-destructive mt-2">{run.errorMessage || 'Error'}</div>
-      )}
-    </Card>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <StatusIcon status={run.status} stage={stage} />
+          <button type="button" aria-label="See details" onClick={onSeeDetails} className="btn-new-chat-compact h-7 px-3 text-xs">
+            Open Thread
+          </button>
+        </div>
+        {isError && (
+          <div className="text-[11px] text-destructive mt-2">{run.errorMessage || 'Error'}</div>
+        )}
+      </Card>
+      {/* Bottom anchor for beams */}
+      {anchorBottomRef && <div ref={anchorBottomRef} className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1 h-0 w-0" />}
+    </div>
   );
 }
 
@@ -207,20 +290,23 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
 }, fallbackText?: string }) {
   if (!structured) {
     return (
-      <Card className="p-4 border-primary/60">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Sparkles className="h-4 w-4 text-primary" /> Final response
-        </div>
-        <div className="mt-2 text-sm text-muted-foreground min-h-6">
-          {fallbackText ? fallbackText : (
-            <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Generating summary…</div>
-          )}
-        </div>
-      </Card>
+      <div className="relative">
+        <Card className="p-4 border-primary/60">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="h-4 w-4 text-primary" /> Final response
+          </div>
+          <div className="mt-2 text-sm text-muted-foreground min-h-6">
+            {fallbackText ? fallbackText : (
+              <div className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Generating summary…</div>
+            )}
+          </div>
+        </Card>
+      </div>
     );
   }
 
   return (
+    <div className="relative">
     <Card className="p-4 border-primary/60 border-dashed bg-card/60">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Sparkles className="h-4 w-4 text-primary" /> Final summary
@@ -334,6 +420,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
         ))}
       </div>
     </Card>
+    </div>
   );
 }
 
