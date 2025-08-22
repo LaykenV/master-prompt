@@ -3,6 +3,7 @@ import { google } from "@ai-sdk/google";
 import { components } from "./_generated/api";
 import { openai } from "@ai-sdk/openai";
 import { v } from "convex/values";
+import { groq } from "@ai-sdk/groq";
 
 // Available models configuration
 export const AVAILABLE_MODELS = {
@@ -54,6 +55,18 @@ export const AVAILABLE_MODELS = {
     icon: "🤖",
     chatModel: () => openai.chat("gpt-5-nano"),
   },
+  "gpt-oss-120b": {
+    provider: "openai",
+    displayName: "GPT OSS 120B",
+    icon: "🤖",
+    chatModel: () => groq("openai/gpt-oss-120b"),
+  },
+  "gpt-oss-20b": {
+    provider: "openai",
+    displayName: "GPT OSS 20B",
+    icon: "🤖",
+    chatModel: () => groq("openai/gpt-oss-20b"),
+  },
 } as const;
 
 export type ModelId = keyof typeof AVAILABLE_MODELS;
@@ -67,7 +80,9 @@ export const MODEL_ID_SCHEMA = v.union(
   v.literal("gemini-2.0-flash"),
   v.literal("gpt-5"),
   v.literal("gpt-5-mini"),
-  v.literal("gpt-5-nano")
+  v.literal("gpt-5-nano"),
+  v.literal("gpt-oss-120b"),
+  v.literal("gpt-oss-20b")
 );
 
 // Helper function to get chat model by ID
@@ -109,7 +124,7 @@ export const masterPromptAgent = createAgentWithModel("gpt-4o-mini");
 
 export const summaryAgent = new Agent(components.agent, {
     name: "Summary Agent",
-    chat: getChatModel("gpt-5-nano"),
+    chat: getChatModel("gpt-oss-120b"),
     instructions: "You are a helpful assistant that can answer questions and help with tasks.",
     usageHandler: async (ctx, { model, usage}) => {
         console.log(`Model: ${model}, Usage:`, usage);

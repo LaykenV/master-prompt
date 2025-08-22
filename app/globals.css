@@ -736,6 +736,14 @@
     background: hsl(var(--accent) / 0.25);
     transition: background 0.18s ease;
   }
+  /* Column sizing to avoid squished model names on larger screens */
+  .summary-col-model { min-width: 220px; width: 24%; }
+  .summary-col-initial { width: 26%; }
+  .summary-col-refined { width: 26%; }
+  .summary-col-changed { width: 10%; }
+  .summary-col-keypoints { width: 14%; }
+  /* Muted body cells for better hierarchy */
+  .summary-cell-muted { color: hsl(var(--muted-foreground)); }
   .table-chip-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .table-chip {
     display: inline-flex;
@@ -752,6 +760,9 @@
       hsl(var(--card));
     font-size: 0.75rem;
   }
+  /* Roomier chips for agreements/disagreements */
+  .table-chip--roomy { padding: 0.35rem 0.65rem; }
+  .summary-chip { color: hsl(var(--muted-foreground)); }
   .chip-destructive {
     border-color: hsl(var(--destructive) / 0.35);
     background:
@@ -766,4 +777,79 @@
   .table-tile { @apply rounded-lg border border-border bg-card p-3; }
   .table-tile-title { @apply text-xs font-medium text-muted-foreground; }
   .table-tile-body { @apply mt-1; }
+
+  /* Mobile model summary card layout */
+  .model-summary-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.08) 0%,
+        hsl(var(--primary) / 0.04) 100%
+      ),
+      hsl(var(--card));
+    box-shadow:
+      0 6px 16px hsl(var(--foreground) / 0.06),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+  .msc-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .msc-model { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .msc-model-name { font-weight: 600; overflow-wrap: anywhere; }
+  .msc-section { margin-top: 0.5rem; }
+  .summary-label { font-size: 0.7rem; letter-spacing: 0.04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  .summary-value { margin-top: 0.25rem; font-size: 0.9rem; color: hsl(var(--muted-foreground)); white-space: pre-wrap; }
+
+  /* Toggle button */
+  .toggle-btn {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+    border: 1px solid hsl(var(--primary) / 0.35);
+    border-radius: 0.5rem;
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.14) 0%, hsl(var(--primary) / 0.08) 100%),
+      hsl(var(--card));
+    color: hsl(var(--foreground));
+    transition: all 0.18s ease;
+  }
+  .toggle-btn:hover { border-color: hsl(var(--primary) / 0.45); filter: brightness(0.98); }
+
+  /* Collapsed whole-run card */
+  .collapsed-card {
+    border: 1px dashed hsl(var(--primary) / 0.45);
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.10) 0%, hsl(var(--primary) / 0.06) 100%),
+      hsl(var(--card));
+    padding: 0.75rem;
+    cursor: pointer;
+    box-shadow:
+      0 8px 20px -12px hsl(var(--primary) / 0.28),
+      0 2px 6px -2px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .collapsed-card:hover { border-color: hsl(var(--primary)); }
+  .collapsed-card-row { display: flex; align-items: center; gap: 0.75rem; }
+  .collapsed-phase { display: inline-flex; align-items: center; gap: 0.5rem; }
+  .collapsed-phase-icon { display: inline-flex; align-items: center; justify-content: center; height: 1.25rem; width: 1.25rem; }
+  .collapsed-phase-text { font-size: 0.85rem; transition: color 120ms ease; }
+  .collapsed-sep { width: 1px; height: 1.2rem; background: hsl(var(--border)); }
+  .collapsed-hint { margin-top: 0.5rem; font-size: 0.7rem; color: hsl(var(--muted-foreground)); }
+
+  /* Final summary compact card */
+  .final-compact-card {
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--primary) / 0.04) 100%),
+      hsl(var(--card));
+    padding: 0.75rem;
+    box-shadow:
+      0 8px 20px -12px hsl(var(--primary) / 0.28),
+      0 2px 6px -2px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .final-compact-title { display: flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.85rem; }
+  .final-compact-body { margin-top: 0.25rem; color: hsl(var(--muted-foreground)); font-size: 0.9rem; }
 }

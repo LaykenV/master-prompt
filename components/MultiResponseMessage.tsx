@@ -20,6 +20,8 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   const multiModelRun = useQuery(api.chat.getMultiModelRun, { masterMessageId });
   const availableModels = useQuery(api.chat.getAvailableModels);
   const [details, setDetails] = useState<{ threadId: string; stage: "initial" | "debate" } | null>(null);
+  const [collapsedAll, setCollapsedAll] = useState<boolean>(false);
+  const [finalCollapsed, setFinalCollapsed] = useState<boolean>(true);
   
   if (!multiModelRun) {
     return null;
@@ -41,12 +43,39 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   // Derived flags (no hooks to avoid conditional hook calls)
   const allLeftInitial = multiModelRun.allRuns.every(r => r.status !== "initial");
   const allDone = multiModelRun.allRuns.every(r => r.status === "complete" || r.status === "error");
+  const initialComplete = allLeftInitial;
+  const debateStarted = multiModelRun.allRuns.some(r => r.status === "debate" || r.status === "complete" || r.status === "error");
+  const debateComplete = allDone;
 
   const selectedRun = details ? multiModelRun.allRuns.find(r => r.threadId === details.threadId) : null;
 
   return (
     <Card className="w-full border-2 border-dashed border-primary/20 bg-muted/30 transition-colors hover:bg-muted/40">
       <CardContent className="pt-4 space-y-6">
+        {/* Top actions */}
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            className="toggle-btn cursor-pointer"
+            onClick={() => setCollapsedAll((v) => !v)}
+            aria-pressed={collapsedAll}
+          >
+            {collapsedAll ? "Expand details" : "Minimize"}
+          </button>
+        </div>
+
+        {/* Collapsed whole run card */}
+        {collapsedAll && (
+          <CollapsedWholeCard
+            initialComplete={initialComplete}
+            debateStarted={debateStarted}
+            debateComplete={debateComplete}
+            onExpand={() => setCollapsedAll(false)}
+          />
+        )}
+
+        {!collapsedAll && (
+          <>
         {/* Initial Stage */}
         <div className="space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Initial responses</div>
@@ -85,7 +114,23 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
 
         {/* Final Summary Table */}
         {allDone && (
-          <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
+          <div className="space-y-2">
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                className="toggle-btn cursor-pointer"
+                onClick={() => setFinalCollapsed((v) => !v)}
+                aria-pressed={finalCollapsed}
+              >
+                {finalCollapsed ? "Expand final" : "Minimize final"}
+              </button>
+            </div>
+            {finalCollapsed ? (
+              <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} onExpand={() => setFinalCollapsed(false)} />
+            ) : (
+              <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={multiModelRun.runSummary} />
+            )}
+          </div>
         )}
 
         {/* Centered details modal */}
@@ -98,6 +143,8 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
           isMaster={!!selectedRun?.isMaster}
           getIcon={getIcon}
         />
+          </>
+        )}
       </CardContent>
     </Card>
   );
@@ -174,7 +221,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
   }
 
   return (
-    <Card className="p-4 border-primary/60 bg-card/60">
+    <Card className="p-4 border-primary/60 border-dashed bg-card/60">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Sparkles className="h-4 w-4 text-primary" /> Final summary
       </div>
@@ -188,33 +235,34 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
           </div>
         </div>
         <div className="table-tile">
-          <div className="table-tile-title">Agreements</div>
+          <div className="table-tile-title pb-2">Agreements</div>
           <div className="table-chip-group">
             {structured.crossModel.agreements.length === 0 ? (
-              <span className="table-chip">None</span>
+              <span className="table-chip table-chip--roomy summary-chip">None</span>
             ) : (
               structured.crossModel.agreements.map((a, i) => (
-                <span key={`agree-${i}`} className="table-chip">{a}</span>
+                <span key={`agree-${i}`} className="table-chip table-chip--roomy summary-chip">{a}</span>
               ))
             )}
           </div>
         </div>
         <div className="table-tile">
-          <div className="table-tile-title">Disagreements</div>
+          <div className="table-tile-title pb-2">Disagreements</div>
           <div className="table-chip-group">
             {structured.crossModel.disagreements.length === 0 ? (
-              <span className="table-chip">None</span>
+              <span className="table-chip table-chip--roomy summary-chip">None</span>
             ) : (
               structured.crossModel.disagreements.map((d, i) => (
-                <span key={`disagree-${i}`} className="table-chip chip-destructive">{d}</span>
+                <span key={`disagree-${i}`} className="table-chip table-chip--roomy summary-chip chip-destructive">{d}</span>
               ))
             )}
           </div>
         </div>
       </div>
 
-      {/* Per-model table */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+      {/* Per-model summary (responsive) */}
+      {/* Desktop/tablet table */}
+      <div className="mt-4 overflow-x-auto rounded-lg border border-border hidden md:block">
         <table className="summary-table w-full">
           <thead>
             <tr>
@@ -228,20 +276,20 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
           <tbody>
             {structured.perModel.map((row) => (
               <tr key={row.modelId}>
-                <td>
+                <td className="summary-col-model">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{getIconSafe(row.modelId)}</span>
                     <span className="font-medium">{row.modelName}</span>
                   </div>
                 </td>
-                <td className="text-sm text-muted-foreground whitespace-pre-wrap">{row.initialSummary}</td>
-                <td className="text-sm text-muted-foreground whitespace-pre-wrap">{row.refinedSummary}</td>
-                <td>
+                <td className="summary-col-initial summary-cell-muted whitespace-pre-wrap text-sm">{row.initialSummary}</td>
+                <td className="summary-col-refined summary-cell-muted whitespace-pre-wrap text-sm">{row.refinedSummary}</td>
+                <td className="summary-col-changed">
                   <Badge variant={row.changedPosition ? "default" : "secondary"} className="text-xs">
                     {row.changedPosition ? "Yes" : "No"}
                   </Badge>
                 </td>
-                <td>
+                <td className="summary-col-keypoints">
                   <div className="table-chip-group">
                     {row.keyPoints.map((k, i) => (
                       <span key={`kp-${row.modelId}-${i}`} className="table-chip">{k}</span>
@@ -253,12 +301,97 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
           </tbody>
         </table>
       </div>
+      {/* Mobile cards */}
+      <div className="mt-4 grid gap-3 md:hidden">
+        {structured.perModel.map((row) => (
+          <div key={row.modelId} className="model-summary-card">
+            <div className="msc-header">
+              <div className="msc-model">
+                <span className="text-sm">{getIconSafe(row.modelId)}</span>
+                <span className="msc-model-name">{row.modelName}</span>
+              </div>
+              <Badge variant={row.changedPosition ? "default" : "secondary"} className="text-xs">
+                {row.changedPosition ? "Changed" : "Unchanged"}
+              </Badge>
+            </div>
+            <div className="msc-section">
+              <div className="summary-label">Initial</div>
+              <div className="summary-value">{row.initialSummary}</div>
+            </div>
+            <div className="msc-section">
+              <div className="summary-label">Refined</div>
+              <div className="summary-value">{row.refinedSummary}</div>
+            </div>
+            <div className="msc-section">
+              <div className="summary-label">Key points</div>
+              <div className="table-chip-group">
+                {row.keyPoints.map((k, i) => (
+                  <span key={`mkp-${row.modelId}-${i}`} className="table-chip">{k}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
 
 function getIconSafe(modelId: string) {
   try { return getModelIcon(modelId as ModelId); } catch { return "🤖"; }
+}
+
+function CollapsedWholeCard({ initialComplete, debateStarted, debateComplete, onExpand }: { initialComplete: boolean; debateStarted: boolean; debateComplete: boolean; onExpand: () => void }) {
+  const Phase = ({ label, active, done }: { label: string; active: boolean; done: boolean }) => (
+    <div className="collapsed-phase">
+      <div className="collapsed-phase-icon" aria-hidden>
+        {done ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : (
+          <Loader2 className={`h-4 w-4 ${active ? "animate-spin" : "opacity-40"}`} />
+        )}
+      </div>
+      <div className={`collapsed-phase-text ${done ? "text-foreground" : "text-muted-foreground"}`}>
+        {label}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="collapsed-card" role="region" aria-label="Multi-model run status" onClick={onExpand}>
+      <div className="collapsed-card-row">
+        <Phase label="Initial round" active={!initialComplete} done={initialComplete} />
+        <div className="collapsed-sep" />
+        <Phase label="Debate" active={debateStarted && !debateComplete} done={debateComplete} />
+      </div>
+      <div className="collapsed-hint">Tap to expand details</div>
+    </div>
+  );
+}
+
+function FinalSummaryCompactCard({ structured, fallbackText, onExpand }: { structured?: { overview?: string; crossModel: { convergenceSummary: string } }, fallbackText?: string, onExpand?: () => void }) {
+  const overview = structured?.overview || structured?.crossModel.convergenceSummary || fallbackText || "";
+  const isLoading = overview.trim().length === 0;
+  return (
+    <div
+      className="collapsed-card"
+      role="button"
+      aria-label="Final summary compact"
+      aria-busy={isLoading}
+      tabIndex={0}
+      onClick={onExpand}
+      onKeyDown={(e) => {
+        if (onExpand && (e.key === "Enter" || e.key === " ")) onExpand();
+      }}
+    >
+      <div className="final-compact-title">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <span>Final overview</span>
+        {isLoading ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" /> : <CheckCircle2 className="h-3 w-3 text-green-600" />}
+      </div>
+      <div className="final-compact-body">
+       {overview}
+      </div>
+    </div>
+  );
 }
 
 function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isMaster, getIcon }: { open: boolean; onOpenChange: (open: boolean) => void; threadId?: string; modelId?: string; modelInfo?: { displayName: string; provider: string }; isMaster?: boolean; getIcon: (modelId: string, provider?: string) => string }) {
