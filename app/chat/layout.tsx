@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useMemo, useEffect, useState } from "react";
 import { useConvexAuth } from "convex/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -29,14 +29,14 @@ import {
   X, 
   LogOut,
   Settings,
-  Brain
 } from "lucide-react";
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
-import { Toaster } from "sonner";
-
+import { Toaster, toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
 export default function ChatLayout({
   children,
 }: {
@@ -53,20 +53,63 @@ export default function ChatLayout({
     { paginationOpts: { numItems: 50, cursor: null } }
   );
 
+  const [confirmDelete, setConfirmDelete] = useState<{
+    threadId: string;
+    label: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const activeThreadId = useMemo(() => {
     if (!pathname) return null;
     const match = pathname.match(/\/chat\/(.+)$/);
     return match ? match[1] : null;
   }, [pathname]);
 
+  const openDeleteDialog = (thread: {
+    _id: string;
+    title?: string | null;
+    summary?: string | null;
+  }) => {
+    const label = thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`;
+    setConfirmDelete({ threadId: thread._id, label });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteThread({ threadId: confirmDelete.threadId });
+      if (activeThreadId === confirmDelete.threadId) {
+        router.push("/chat");
+      }
+      toast.success("Chat deleted");
+      setConfirmDelete(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete chat");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && confirmDelete && !isDeleting) {
+        setConfirmDelete(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmDelete, isDeleting]);
+
   return (
     <SidebarProvider className="h-full">
       <Toaster position="top-center" richColors />
       <Sidebar variant="inset" collapsible="icon" className="brand-sidebar">
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">Master Prompt</span>
+          <div className="flex items-center gap-2 px-2 py-1 ">
+            <Image src="/image.png" alt="Mind Mesh" width={32} height={32} />
+            <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden text-primary font-bold text-xl">Mesh Mind</span>
           </div>
           <Link 
             href="/chat"
@@ -115,8 +158,8 @@ export default function ChatLayout({
                             </Link>
                           </SidebarMenuButton>
                           <SidebarMenuAction 
-                            onClick={() => void deleteThread({ threadId: thread._id })}
-                            className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => openDeleteDialog(thread)}
+                            className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
                             aria-label={`Delete chat: ${thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}`}
                           >
                             <X className="h-3 w-3" />
@@ -188,6 +231,63 @@ export default function ChatLayout({
         
         <main className="flex-1 overflow-hidden">{children}</main>
       </SidebarInset>
+      {confirmDelete && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!isDeleting) setConfirmDelete(null);
+          }}
+        >
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-title"
+            aria-describedby="delete-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="delete-title" className="text-lg font-semibold">
+                Delete chat?
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="modal-close cursor-pointer"
+                onClick={() => setConfirmDelete(null)}
+                disabled={isDeleting}
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div id="delete-desc" className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to delete
+              {" "}
+              <span className="font-medium text-foreground">{confirmDelete.label}</span>?
+              {" "}
+              This action cannot be undone.
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setConfirmDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="btn-destructive px-3 py-2 rounded-md cursor-pointer"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting…" : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </SidebarProvider>
   );
 }

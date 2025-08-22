@@ -6,7 +6,6 @@ import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { useThreadMessages, optimisticallySendMessage, toUIMessages } from "@convex-dev/agent/react";
 import { ChatMessages } from "@/components/ChatMessages";
-import { Button } from "@/components/ui/button";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 

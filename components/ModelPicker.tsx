@@ -212,7 +212,7 @@ export function ModelPicker({
           className={`flex items-center gap-2 surface-trigger ${className}`}
         >
           <span className="inline-flex items-center gap-2">
-            <span className="font-medium text-xs sm:text-base">
+            <span className="text-sm font-medium"> 
               {masterModelInfo?.displayName || multiSelectState.master}
             </span>
           </span>

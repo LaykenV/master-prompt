@@ -3,13 +3,14 @@
 
 //multi response ui
 //magic ui component 
-fix file preview and text paste
-perfect it
-name logo
-add other models
-perfect markdown rendering and auto scroll and fonts
+//fix file preview and text paste
+//perfect it
+//name logo
+add other models openrouter anthropic
+perfect markdown rendering and auto scroll and fonts, sending msg should scroll
 thread title call
-theme toggle expanded, delete thread, light mode selected thread color
+//light mode selected thread color
+//add copy to all messages
 
 polar? how to handle subs and token tracking?
 rate limiting?
@@ -18,6 +19,7 @@ test everything
 
 settings page
 landing page
+new chat ui
 
 auth migration?
 

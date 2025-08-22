@@ -65,8 +65,8 @@
   --sidebar-foreground: 230 22% 15%;
   --sidebar-primary: 215 85% 55%;
   --sidebar-primary-foreground: 0 0% 100%;
-  /* Sidebar hover/active background - darker for better contrast */
-  --sidebar-accent: 225 30% 80%;
+  /* Sidebar hover/active background - tuned lighter for consistent look across gradient */
+  --sidebar-accent: 225 32% 88%;
   --sidebar-accent-foreground: 230 22% 15%;
   --sidebar-border: 230 16% 84%;
   --sidebar-ring: 215 85% 55%;
@@ -197,18 +197,19 @@
     border-radius: 0.5rem;
     border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
-    color: hsl(var(--foreground));
+    color: hsl(var(--muted-foreground));
     transition: all 0.18s ease-in-out;
   }
   .modal-close:hover {
     background:
       linear-gradient(
         180deg,
-        hsl(var(--primary) / 0.12) 0%,
-        hsl(var(--primary) / 0.08) 100%
+        hsl(var(--accent) / 0.16) 0%,
+        hsl(var(--accent) / 0.10) 100%
       ),
       hsl(var(--card));
-    border-color: hsl(var(--primary) / 0.35);
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
   }
 
   @keyframes modal-fade-in {
@@ -477,6 +478,14 @@
   
   .btn-secondary {
     @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-2 focus-visible:ring-ring transition-colors;
+  }
+  
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/85 focus-visible:ring-2 focus-visible:ring-ring transition-colors;
+    box-shadow:
+      0 12px 28px -14px hsl(var(--destructive) / 0.35),
+      0 4px 10px -2px hsl(var(--destructive) / 0.25);
+    border: 1px solid hsl(var(--destructive) / 0.45);
   }
   
   /* Card hover effects */
