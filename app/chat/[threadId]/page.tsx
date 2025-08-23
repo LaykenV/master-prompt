@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { useThreadMessages, optimisticallySendMessage, toUIMessages } from "@convex-dev/agent/react";
-import { ChatMessages } from "@/components/ChatMessages";
+import { ChatMessages, type ChatMessagesHandle } from "@/components/ChatMessages";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 
@@ -24,7 +24,9 @@ export default function ThreadPage() {
   const [multiModelSelection, setMultiModelSelection] = useState<{
     master: string;
     secondary: string[];
-  }>({ master: "gpt-4o-mini", secondary: [] });
+  }>({ master: "gpt-5", secondary: [] });
+
+  const messagesRef = React.useRef<ChatMessagesHandle | null>(null);
 
   // Actions and mutations
   const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
@@ -156,6 +158,8 @@ export default function ThreadPage() {
     const content = (text ?? input).trim();
     if (!content || isSending || !user?._id) return;
     setIsSending(true);
+    // Ensure view is pinned to bottom when sending
+    try { messagesRef.current?.scrollToBottomNow(); } catch {}
     
     try {
       // Ensure uploads finish (most should be pre-uploaded already)
@@ -201,7 +205,7 @@ export default function ThreadPage() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 overflow-hidden">
-        <ChatMessages messages={messages} pendingFromRedirect={pendingFromRedirect} />
+        <ChatMessages ref={messagesRef} messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
       <div className="p-4">
         <div className="mx-auto max-w-4xl">

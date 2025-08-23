@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useMemo } from "react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Bot } from "lucide-react";
-import { getModelIcon, getProviderIcon, ModelId } from "@/convex/agent";
+import { getModelLogo, getProviderLogo, ModelId } from "@/convex/agent";
 // no search input
 
 interface ModelPickerProps {
@@ -34,6 +35,9 @@ export function ModelPicker({
   onMultiModelChange,
   latestUserMessageId,
 }: ModelPickerProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const availableModels = useQuery(api.chat.getAvailableModels);
   const threadModel = useQuery(api.chat.getThreadModel, threadId ? { threadId } : "skip");
   const latestMultiRun = useQuery(
@@ -48,7 +52,7 @@ export function ModelPicker({
     master: string;
     secondary: string[];
   }>({
-    master: threadModel || "gpt-4o-mini",
+    master: threadModel || "gpt-5",
     secondary: []
   });
   // search removed per design
@@ -191,13 +195,18 @@ export function ModelPicker({
     ...availableModels.filter(m => multiSelectState.secondary.includes(m.id)),
   ];
 
-  // Helper function to get icon by model ID or fallback to provider
-  const getIcon = (modelId: string, provider?: string) => {
-    try {
-      return getModelIcon(modelId as ModelId);
-    } catch {
-      return getProviderIcon(provider || "");
-    }
+  // Helper to render a themed logo (light/dark) for a model or its provider
+  const renderLogo = (modelId: string, provider?: string) => {
+    const logo = (() => {
+      try {
+        return getModelLogo(modelId as ModelId);
+      } catch {
+        return getProviderLogo(provider || "");
+      }
+    })();
+    const isDark = (resolvedTheme ?? "dark") === "dark";
+    const src = mounted ? (isDark ? logo.dark : logo.light) : logo.dark; // default to dark during SSR to avoid flicker
+    return (<img src={src} alt={logo.alt} className="h-5 w-5" />);
   };
 
   // Unified single-button menu with master + optional secondary selection
@@ -261,7 +270,7 @@ export function ModelPicker({
                           role="option"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl">{getIcon(model.id, model.provider)}</span>
+                            {renderLogo(model.id, model.provider)}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
@@ -316,7 +325,7 @@ export function ModelPicker({
                             role="option"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="text-2xl">{getIcon(model.id, model.provider)}</span>
+                              {renderLogo(model.id, model.provider)}
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>

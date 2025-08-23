@@ -1,5 +1,6 @@
 "use client";
 
+import React, { forwardRef, useImperativeHandle } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toUIMessages, useThreadMessages, type UIMessage } from "@convex-dev/agent/react";
@@ -16,7 +17,11 @@ interface ChatMessagesProps {
   pendingFromRedirect?: { content: string; hasFiles?: boolean; createdAt?: number } | null;
 }
 
-export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProps) {
+export type ChatMessagesHandle = {
+  scrollToBottomNow: () => void;
+};
+
+export const ChatMessages = forwardRef<ChatMessagesHandle, ChatMessagesProps>(function ChatMessages({ messages, pendingFromRedirect }, ref) {
   const uiMessages = messages.results ? toUIMessages(messages.results) : [];
   
   // Track streaming status for better auto-scroll dependency
@@ -30,7 +35,15 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
     shouldAutoScroll,
     handleScroll,
     handleTouchStart,
+    enableAutoScroll,
   } = useAutoScroll([uiMessages, isStreaming, messageCount]);
+
+  useImperativeHandle(ref, () => ({
+    scrollToBottomNow: () => {
+      enableAutoScroll();
+      scrollToBottom();
+    },
+  }), [enableAutoScroll, scrollToBottom]);
 
   if (messages.isLoading) {
     return (
@@ -129,7 +142,7 @@ export function ChatMessages({ messages, pendingFromRedirect }: ChatMessagesProp
       )}
     </div>
   );
-}
+});
 
 function MessageWithMultiModel({ message, messageId }: { message: UIMessage; messageId?: string }) {
   const multiModelRun = useQuery(

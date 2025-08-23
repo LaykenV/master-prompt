@@ -6,9 +6,10 @@
 //fix file preview and text paste
 //perfect it
 //name logo
-add other models openrouter anthropic
-perfect markdown rendering and auto scroll and fonts, sending msg should scroll
-thread title call
+//add other models openrouter anthropic
+//auto scroll and fonts, sending msg should scroll
+file support?
+//thread title call
 //light mode selected thread color
 //add copy to all messages
 

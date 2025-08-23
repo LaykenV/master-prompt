@@ -1,4 +1,4 @@
-import { masterPromptAgent, createAgentWithModel, AVAILABLE_MODELS, MODEL_ID_SCHEMA, type ModelId } from "./agent";
+import { masterPromptAgent, createAgentWithModel, AVAILABLE_MODELS, MODEL_ID_SCHEMA, type ModelId, summaryAgent } from "./agent";
 import { action, query, internalAction, mutation, internalMutation, internalQuery, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { components, internal } from "./_generated/api";
@@ -94,24 +94,25 @@ export const createThread = action({
         if (!userId) throw new Error("Not authenticated");
         
         // Create thread with model in summary for easy identification
-        const modelId = args.modelId || "gpt-4o-mini";
+        const modelId = args.modelId || "gpt-5";
         const { _id: threadId } = await ctx.runMutation(
             components.agent.threads.createThread,
             {
-                title: args.title,
+                title: args.title ?? "New chat",
                 userId: userId,
                 summary: `Model: ${AVAILABLE_MODELS[modelId as ModelId].displayName}`,
             }
         );
         
-        // If there's an initial prompt, save it and generate a response
-        if (args.initialPrompt) {
-            await ctx.runMutation(internal.chat.saveInitialMessage, {
+        // If there's an initial prompt, we'll only use it for title generation.
+        // Actual message send still happens via subsequent flows (single-model send or multi-model workflow).
+
+        // Schedule async title generation (non-blocking) only if provided
+        if (args.initialPrompt && args.initialPrompt.trim().length > 0) {
+            console.log("scheduling title generation for prompt", args.initialPrompt);
+            await ctx.scheduler.runAfter(0, internal.chat.generateThreadTitle, {
                 threadId,
-                userId: userId,
-                prompt: args.initialPrompt,
-                modelId: modelId as ModelId,
-                fileIds: args.fileIds,
+                initialPrompt: args.initialPrompt,
             });
         }
         
@@ -176,7 +177,7 @@ export const getThreadModel = query({
             }
         }
         
-        return "gpt-4o-mini"; // default
+        return "gpt-5"; // default
     },
 });
 
@@ -336,7 +337,7 @@ export const getThreadModelInternal = internalQuery({
             }
         }
         
-        return "gpt-4o-mini"; // default
+        return "gpt-5"; // default
     },
 });
 
@@ -682,5 +683,41 @@ export const listSecondaryThreadMessages = query({
             streamArgs,
         });
         return { ...paginated, streams };
+    },
+});
+
+// Internal action: generate a concise title for a thread asynchronously
+export const generateThreadTitle = internalAction({
+    args: {
+        threadId: v.string(),
+        initialPrompt: v.optional(v.string()),
+    },
+    returns: v.null(),
+    handler: async (ctx, { threadId, initialPrompt }) => {
+        try {
+            const agent = summaryAgent;
+            const { thread } = await agent.continueThread(ctx, { threadId });
+            const prompt = `Generate a concise, descriptive conversation title (max 20 characters). Use Title Case. Do not include quotes. Here is the initial prompt: "${initialPrompt}". Respond with only the title.`;
+
+            const result = await thread.generateText({ prompt }, { storageOptions: { saveMessages: "none" } });
+            let title = (result.text ?? "").trim();
+            title = title.slice(0, 20);
+            console.log("title", title);
+
+            await ctx.runMutation(components.agent.threads.updateThread, {
+                threadId,
+                patch: { title },
+            });
+        } catch (err) {
+            console.error("Error in generateThreadTitle", err);
+            const fallback = (initialPrompt?.trim() || "New chat").slice(0, 20);
+            try {
+                await ctx.runMutation(components.agent.threads.updateThread, {
+                    threadId,
+                    patch: { title: fallback },
+                });
+            } catch {}
+        }
+        return null;
     },
 });

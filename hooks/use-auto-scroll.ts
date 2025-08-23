@@ -50,6 +50,14 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     setShouldAutoScroll(false)
   }
 
+  const enableAutoScroll = () => {
+    setShouldAutoScroll(true)
+  }
+
+  const disableAutoScroll = () => {
+    setShouldAutoScroll(false)
+  }
+
   useEffect(() => {
     if (containerRef.current) {
       previousScrollTop.current = containerRef.current.scrollTop
@@ -77,5 +85,7 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     handleScroll,
     shouldAutoScroll,
     handleTouchStart,
+    enableAutoScroll,
+    disableAutoScroll,
   }
 }

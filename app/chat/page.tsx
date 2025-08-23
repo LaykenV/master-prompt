@@ -18,12 +18,12 @@ export default function NewChatPage() {
   const sendMessageMutation = useMutation(api.chat.sendMessage);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[] | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>("gpt-4o-mini");
+  const [selectedModel, setSelectedModel] = useState<string>("gpt-5");
   const [isCreating, setIsCreating] = useState(false);
   const [multiModelSelection, setMultiModelSelection] = useState<{
     master: string;
     secondary: string[];
-  }>({ master: "gpt-4o-mini", secondary: [] });
+  }>({ master: "gpt-5", secondary: [] });
 
   // -------- Pre-upload files to minimize send-time latency --------
   const SMALL_FILE_LIMIT = 800 * 1024; // ~0.8MB safe under Convex v.bytes limits
@@ -90,15 +90,18 @@ export default function NewChatPage() {
 
   const onStart = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    console.log("onStart", input);
     const content = input.trim();
+    console.log("content", content);
     if (!content || isCreating || !user?._id) return;
     setIsCreating(true);
     
     try {
       if (multiModelSelection.secondary.length > 0) {
         // Create thread immediately and navigate, then run uploads + generation in background
+        console.log("initial prompt", content);
         const threadId = await createThread({ 
-          title: content.slice(0, 80),
+          initialPrompt: content,
           modelId: multiModelSelection.master as ModelId
         });
         // Stash a pending message so the thread page can render a skeleton immediately
@@ -128,8 +131,9 @@ export default function NewChatPage() {
         })();
       } else {
         // Single model: create thread and navigate immediately; send message in background
+        console.log("initial prompt", content);
         const threadId = await createThread({ 
-          title: content.slice(0, 80),
+          initialPrompt: content,
           modelId: selectedModel as ModelId,
         });
         // Stash a pending message so the thread page can render a skeleton immediately
