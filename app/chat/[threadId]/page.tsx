@@ -41,7 +41,7 @@ export default function ThreadPage() {
   // Get messages to check if streaming has started
   const messages = useThreadMessages(
     api.chat.listThreadMessages,
-    { threadId },
+    isAuthenticated && threadId ? { threadId } : "skip",
     { initialNumItems: 10, stream: true }
   );
 
