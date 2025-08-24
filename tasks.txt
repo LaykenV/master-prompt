@@ -17,16 +17,22 @@
 //light mode selected thread color
 //add copy to all messages
 
-review code for commit
+//review code for commit
 max 3/4?
 drag selected models for primary
+
+
+fix logos on multi card
 remove getprovidericon modelsupportsfiles
 
+figure out subscription and usage
 
 polar? how to handle subs and token tracking? how to price? subs?
 usage handling
 
 rate limiting?
+
+resend?
 
 
 settings page

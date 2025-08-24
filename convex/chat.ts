@@ -455,6 +455,9 @@ export const startMultiModelGeneration = action({
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
 
+        // Enforce a maximum of 3 total models (1 master + up to 2 secondary)
+        const cappedSecondaries = (secondaryModelIds ?? []).slice(0, 2);
+
         // Validate file support for master model if files are attached
         if (fileIds && fileIds.length > 0) {
             if (!AVAILABLE_MODELS[masterModelId as ModelId].fileSupport) {
@@ -507,7 +510,7 @@ export const startMultiModelGeneration = action({
                 masterMessageId: messageId,
                 prompt,
                 masterModelId,
-                secondaryModelIds,
+                secondaryModelIds: cappedSecondaries,
                 userId,
                 fileIds,
             }

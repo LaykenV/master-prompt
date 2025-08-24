@@ -252,7 +252,7 @@ export default function ThreadPage() {
           threadId,
           prompt: content,
           masterModelId: multiModelSelection.master as ModelId,
-          secondaryModelIds: multiModelSelection.secondary as ModelId[],
+          secondaryModelIds: (multiModelSelection.secondary as ModelId[]).slice(0, 2),
           fileIds: fileIds.length > 0 ? fileIds : undefined,
         });
       } else {

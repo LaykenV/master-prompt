@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Bot, Paperclip, Brain } from "lucide-react";
+import { ChevronDown, Bot, Paperclip, Brain, GripVertical, X } from "lucide-react";
 import { getModelLogo, getProviderLogo } from "@/convex/agent";
 import type { ModelId } from "@/convex/agent";
 // no search input
@@ -57,6 +57,12 @@ export function ModelPicker({
     secondary: []
   });
   // search removed per design
+  const MAX_SECONDARIES = 2;
+
+  // Drag-and-drop state
+  type DragTarget = { target: "master" } | { target: "secondary"; index: number } | null;
+  const [draggingModelId, setDraggingModelId] = useState<string | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<DragTarget>(null);
 
   // Initialize client model from thread model
   useEffect(() => {
@@ -89,7 +95,8 @@ export function ModelPicker({
     type RunInfo = { isMaster: boolean; modelId: string };
     const secondaries = (latestMultiRun.allRuns as Array<RunInfo>)
       .filter((r) => !r.isMaster)
-      .map((r) => r.modelId as string);
+      .map((r) => r.modelId as string)
+      .slice(0, MAX_SECONDARIES);
     const nextState = { master, secondary: secondaries };
     const hasDiff =
       multiSelectState.master !== nextState.master ||
@@ -112,7 +119,8 @@ export function ModelPicker({
       type RunInfo = { isMaster: boolean; modelId: string };
       const secondaries = (latestMessageRun.allRuns as Array<RunInfo>)
         .filter((r) => !r.isMaster)
-        .map((r) => r.modelId as string);
+        .map((r) => r.modelId as string)
+        .slice(0, MAX_SECONDARIES);
       const nextState = { master, secondary: secondaries };
       const hasDiff =
         multiSelectState.master !== nextState.master ||
@@ -155,7 +163,12 @@ export function ModelPicker({
       return;
     }
 
-    const newSecondary = multiSelectState.secondary.includes(modelId)
+    const isSelected = multiSelectState.secondary.includes(modelId);
+    if (!isSelected && multiSelectState.secondary.length >= MAX_SECONDARIES) {
+      return;
+    }
+
+    const newSecondary = isSelected
       ? multiSelectState.secondary.filter(id => id !== modelId)
       : [...multiSelectState.secondary, modelId];
 
@@ -172,10 +185,100 @@ export function ModelPicker({
       ? [...nextSecondaryBase, prevMaster]
       : nextSecondaryBase;
     const uniqueSecondary = Array.from(new Set(withPrevMaster));
-    const newState = { master: modelId, secondary: uniqueSecondary };
+    const cappedSecondary = uniqueSecondary.slice(0, MAX_SECONDARIES);
+    const newState = { master: modelId, secondary: cappedSecondary };
     setMultiSelectState(newState);
     onMultiModelChange?.(newState);
     onModelChange?.(modelId);
+  };
+
+  // Helper: remove a secondary model
+  const removeSecondary = (modelId: string) => {
+    const newSecondary = multiSelectState.secondary.filter(id => id !== modelId);
+    const newState = { ...multiSelectState, secondary: newSecondary };
+    setMultiSelectState(newState);
+    onMultiModelChange?.(newState);
+  };
+
+  // DnD handlers
+  const onCardDragStart = (e: React.DragEvent, modelId: string) => {
+    setDraggingModelId(modelId);
+    try {
+      e.dataTransfer.setData("text/plain", modelId);
+    } catch {}
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragEnd = () => {
+    setDraggingModelId(null);
+    setDragOverTarget(null);
+  };
+
+  const onDragOverZone = (e: React.DragEvent, target: DragTarget) => {
+    e.preventDefault();
+    setDragOverTarget(target);
+  };
+
+  const onDropOnMaster = (e: React.DragEvent) => {
+    e.preventDefault();
+    const id = (() => {
+      try {
+        return e.dataTransfer.getData("text/plain") || draggingModelId;
+      } catch {
+        return draggingModelId;
+      }
+    })();
+    if (!id) return;
+    if (id === multiSelectState.master) return;
+    handleMasterChange(id);
+    setDragOverTarget(null);
+    setDraggingModelId(null);
+  };
+
+  const onDropOnSecondary = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    const id = (() => {
+      try {
+        return e.dataTransfer.getData("text/plain") || draggingModelId;
+      } catch {
+        return draggingModelId;
+      }
+    })();
+    if (!id) return;
+    if (id === multiSelectState.master) {
+      // Don't allow dropping the current master into secondary directly
+      setDragOverTarget(null);
+      setDraggingModelId(null);
+      return;
+    }
+
+    const isAlreadySecondary = multiSelectState.secondary.includes(id);
+    const nextSecondary = [...multiSelectState.secondary];
+
+    if (isAlreadySecondary) {
+      // Reorder within secondary slots
+      const from = nextSecondary.indexOf(id);
+      if (from !== -1 && from !== index) {
+        nextSecondary.splice(from, 1);
+        nextSecondary.splice(index, 0, id);
+      }
+    } else {
+      // Insert into requested slot
+      if (nextSecondary.length < MAX_SECONDARIES) {
+        nextSecondary.splice(index, 0, id);
+      } else {
+        // Replace the target slot if full
+        nextSecondary[index] = id;
+      }
+    }
+
+    // Ensure uniqueness and cap
+    const unique = Array.from(new Set(nextSecondary)).slice(0, MAX_SECONDARIES);
+    const newState = { ...multiSelectState, secondary: unique };
+    setMultiSelectState(newState);
+    onMultiModelChange?.(newState);
+    setDragOverTarget(null);
+    setDraggingModelId(null);
   };
 
   if (!availableModels) {
@@ -189,14 +292,6 @@ export function ModelPicker({
 
   const masterModelInfo = availableModels.find(m => m.id === multiSelectState.master);
   const secondaryInfos = availableModels.filter(m => multiSelectState.secondary.includes(m.id));
-  const selectedIds = new Set<string>([
-    multiSelectState.master,
-    ...multiSelectState.secondary,
-  ]);
-  const selectedModelsList = [
-    ...(masterModelInfo ? [masterModelInfo] : []),
-    ...availableModels.filter(m => multiSelectState.secondary.includes(m.id)),
-  ];
 
   // Helper to render a themed logo (light/dark) for a model or its provider
   const renderLogo = (modelId: string, provider?: string) => {
@@ -248,147 +343,190 @@ export function ModelPicker({
           <ChevronDown className="h-3 w-3" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[960px] max-w-[95vw] border-border p-5 rounded-xl shadow-xl surface-menu">
-        <div className="max-h-[540px] overflow-auto pr-1">
-          <div className="flex flex-col gap-6">
-            {selectedModelsList.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 px-1">
-                  <span className="text-base font-semibold">Selected models</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                  {selectedModelsList.map((model) => {
-                    const isPrimary = model.id === multiSelectState.master;
-                    const isSecondary = multiSelectState.secondary.includes(model.id);
-                    const disabled = isPrimary;
-                    return (
-                      <div key={`selected-card-${model.id}`} className="group relative">
-                        <button
-                          type="button"
-                          onClick={() => !disabled && handleMultiModelToggle(model.id)}
-                          className={`model-card model-card-wide w-full text-left p-3 ${
-                            disabled ? "cursor-default opacity-90" : "cursor-pointer"
-                          } ${isPrimary || isSecondary ? "model-card-selected" : ""}`}
-                          aria-selected={isPrimary || isSecondary}
-                          role="option"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                              {isPrimary && (
-                                <span className="badge-primary" aria-label="Primary model">Primary</span>
-                              )}
-                              {!isPrimary && isSecondary && (
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
-                                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
-                                  className="badge-set-primary"
-                                  aria-label={`Set ${model.displayName} as primary`}
-                                >
-                                  Set Primary
-                                </span>
-                              )}
-                              {renderLogo(model.id, model.provider)}
-                              <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-col items-end justify-end gap-2">
-                                {model.fileSupport && (
-                                  <span className="badge-file" aria-label="Supports files">
-                                    <Paperclip className="h-3 w-3" />
-                                    Files
-                                  </span>
-                                )}
-                                {model.reasoning && (
-                                  <span className="badge-file" aria-label="Supports reasoning">
-                                    <Brain className="h-3 w-3" />
-                                    Reasoning
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+      <DropdownMenuContent align="start" className="w-[92vw] md:w-[1000px] max-w-[95vw] border-border p-5 rounded-xl shadow-xl surface-menu">
+        <div className="h-[70vh] max-h-[640px]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-full">
+            {/* Selected panel - sticky on desktop, always visible */}
+            <div className="lg:col-span-1 lg:sticky lg:top-2 self-start">
+              <div className="flex items-center justify-between px-1 mb-3">
+                <span className="text-base font-semibold">Selected</span>
+                <span className="text-xs text-muted-foreground">Drag to assign</span>
               </div>
-            )}
-
-            {Object.entries(modelsByProvider).map(([provider, models]) => {
-              const visibleModels = models.filter(m => !selectedIds.has(m.id));
-              if (visibleModels.length === 0) return null;
-              return (
-                <div key={`provider-${provider}`} className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="text-base font-semibold capitalize">{provider}</span>
+              {/* Master drop zone */}
+              <div
+                onDragOver={(e) => onDragOverZone(e, { target: "master" })}
+                onDrop={onDropOnMaster}
+                onDragLeave={() => setDragOverTarget(null)}
+                className={`rounded-lg border p-3 mb-4 transition-colors ${
+                  dragOverTarget && dragOverTarget.target === "master" ? "border-primary/60" : "border-border"
+                }`}
+                aria-label="Master model drop zone"
+              >
+                <div className="text-xs font-medium mb-2 flex items-center gap-2">
+                  <span className="badge-primary" aria-label="Primary model">Primary</span>
+                  <span className="text-muted-foreground">Master model</span>
+                </div>
+                {masterModelInfo ? (
+                  <div className="model-card model-card-wide p-3 flex items-center gap-3">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm sm:text-base truncate">{masterModelInfo.displayName}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {masterModelInfo.fileSupport && (
+                        <span className="badge-file" aria-label="Supports files">
+                          <Paperclip className="h-3 w-3" />
+                          Files
+                        </span>
+                      )}
+                      {masterModelInfo.reasoning && (
+                        <span className="badge-file" aria-label="Supports reasoning">
+                          <Brain className="h-3 w-3" />
+                          Reasoning
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                    {visibleModels.map((model) => {
-                      const isPrimary = model.id === multiSelectState.master;
-                      const isSecondary = multiSelectState.secondary.includes(model.id);
-                      const disabled = isPrimary;
-                      return (
-                        <div key={`card-${model.id}`} className="group relative">
+                ) : (
+                  <div className="p-4 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here to set as master</div>
+                )}
+              </div>
+
+              {/* Secondary slots */}
+              <div className="px-1 mb-2 text-xs text-muted-foreground">Optional secondaries (up to {MAX_SECONDARIES})</div>
+              <div className="grid grid-cols-1 gap-3">
+                {[0, 1].slice(0, MAX_SECONDARIES).map((slotIndex) => {
+                  const slotModel = secondaryInfos[slotIndex];
+                  const isDragOver = !!(dragOverTarget && dragOverTarget.target === "secondary" && dragOverTarget.index === slotIndex);
+                  return (
+                    <div
+                      key={`secondary-slot-${slotIndex}`}
+                      onDragOver={(e) => onDragOverZone(e, { target: "secondary", index: slotIndex })}
+                      onDrop={(e) => onDropOnSecondary(e, slotIndex)}
+                      onDragLeave={() => setDragOverTarget(null)}
+                      className={`rounded-lg border p-2 transition-colors ${isDragOver ? "border-primary/60" : "border-border"}`}
+                    >
+                      {slotModel ? (
+                        <div
+                          className="model-card model-card-wide p-2 flex items-center gap-3"
+                          draggable
+                          onDragStart={(e) => onCardDragStart(e, slotModel.id)}
+                          onDragEnd={onDragEnd}
+                        >
+                          <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden />
+                          {renderLogo(slotModel.id, slotModel.provider)}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{slotModel.displayName}</div>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => !disabled && handleMultiModelToggle(model.id)}
-                            className={`model-card model-card-wide w-full text-left p-3 ${
-                              disabled ? "cursor-default opacity-90" : "cursor-pointer"
-                            } ${isPrimary || isSecondary ? "model-card-selected" : ""}`}
-                            aria-selected={isPrimary || isSecondary}
-                            role="option"
+                            className="badge-set-primary"
+                            onClick={(e) => { e.stopPropagation(); handleMasterChange(slotModel.id); }}
+                            aria-label={`Set ${slotModel.displayName} as primary`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
-                                {isPrimary && (
-                                  <span className="badge-primary" aria-label="Primary model">Primary</span>
-                                )}
-                                {!isPrimary && isSecondary && (
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
-                                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
-                                    className="badge-set-primary"
-                                    aria-label={`Set ${model.displayName} as primary`}
-                                  >
-                                    Set Primary
-                                  </span>
-                                )}
-                                {renderLogo(model.id, model.provider)}
-                                <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-col items-end justify-end gap-2">
-                                  {model.fileSupport && (
-                                    <span className="badge-file" aria-label="Supports files">
-                                      <Paperclip className="h-3 w-3" />
-                                      Files
-                                    </span>
-                                  )}
-                                  {model.reasoning && (
-                                    <span className="badge-file" aria-label="Supports reasoning">
-                                      <Brain className="h-3 w-3" />
-                                      Reasoning
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                            Set Primary
+                          </button>
+                          <button
+                            type="button"
+                            className="ml-2 inline-flex items-center justify-center rounded-md border px-1.5 py-0.5 text-[10px] bg-card"
+                            aria-label={`Remove ${slotModel.displayName}`}
+                            onClick={(e) => { e.stopPropagation(); removeSecondary(slotModel.id); }}
+                          >
+                            <X className="h-3 w-3" />
                           </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                      ) : (
+                        <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Available models - scrollable on desktop */}
+            <div className="lg:col-span-2 h-full overflow-auto pr-1">
+              <div className="flex flex-col gap-6">
+                {Object.entries(modelsByProvider).map(([provider, models]) => {
+                  const visibleModels = models; // Keep showing all models; indicate selected state
+                  if (visibleModels.length === 0) return null;
+                  return (
+                    <div key={`provider-${provider}`} className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-base font-semibold capitalize">{provider}</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                        {visibleModels.map((model) => {
+                          const isPrimary = model.id === multiSelectState.master;
+                          const isSecondary = multiSelectState.secondary.includes(model.id);
+                          const disabled = isPrimary || (!isSecondary && multiSelectState.secondary.length >= MAX_SECONDARIES);
+                          const selectedClass = isPrimary || isSecondary ? "model-card-selected" : "";
+                          return (
+                            <div key={`card-${model.id}`} className="group relative">
+                              <button
+                                type="button"
+                                onClick={() => !disabled && handleMultiModelToggle(model.id)}
+                                className={`model-card model-card-wide w-full text-left p-3 ${
+                                  disabled ? "cursor-default opacity-90" : "cursor-pointer"
+                                } ${selectedClass}`}
+                                aria-selected={isPrimary || isSecondary}
+                                role="option"
+                                draggable
+                                onDragStart={(e) => onCardDragStart(e, model.id)}
+                                onDragEnd={onDragEnd}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
+                                    {isPrimary && (
+                                      <span className="badge-primary" aria-label="Primary model">Primary</span>
+                                    )}
+                                    {!isPrimary && isSecondary && (
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
+                                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
+                                        className="badge-set-primary"
+                                        aria-label={`Set ${model.displayName} as primary`}
+                                      >
+                                        Set Primary
+                                      </span>
+                                    )}
+                                    {renderLogo(model.id, model.provider)}
+                                    <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {model.fileSupport && (
+                                        <span className="badge-file" aria-label="Supports files">
+                                          <Paperclip className="h-3 w-3" />
+                                          Files
+                                        </span>
+                                      )}
+                                      {model.reasoning && (
+                                        <span className="badge-file" aria-label="Supports reasoning">
+                                          <Brain className="h-3 w-3" />
+                                          Reasoning
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+

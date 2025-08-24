@@ -30,7 +30,8 @@ export const multiModelGeneration = workflow.define({
     fileIds: v.optional(v.array(v.string())),
   },
   handler: async (step, args): Promise<void> => {
-    const { masterThreadId, masterMessageId, prompt, masterModelId, secondaryModelIds, userId, fileIds } = args;
+    const { masterThreadId, masterMessageId, prompt, masterModelId, userId, fileIds } = args;
+    const secondaryModelIds = args.secondaryModelIds.slice(0, 2);
 
     // Step 1: Create sub-threads for ALL models (including master)
     const allModelIds = [masterModelId, ...secondaryModelIds];
