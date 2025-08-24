@@ -36,6 +36,7 @@ export const ChatMessages = forwardRef<ChatMessagesHandle, ChatMessagesProps>(fu
     handleScroll,
     handleTouchStart,
     enableAutoScroll,
+    isScrollable,
   } = useAutoScroll([uiMessages, isStreaming, messageCount]);
 
   useImperativeHandle(ref, () => ({
@@ -129,7 +130,7 @@ export const ChatMessages = forwardRef<ChatMessagesHandle, ChatMessagesProps>(fu
         </div>
       </div>
       
-      {!shouldAutoScroll && (
+      {!shouldAutoScroll && isScrollable && (
         <Button
           onClick={enableAutoScroll}
           className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 user-bubble rounded-xl px-4 py-2.5 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-2 cursor-pointer"

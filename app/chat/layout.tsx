@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { 
@@ -291,6 +292,7 @@ function ThreadItem({
   isActive: boolean;
   onDelete: () => void;
 }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   const isLoading = useThreadLoadingState(thread._id, isActive);
   const displayName = thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`;
 
@@ -301,7 +303,13 @@ function ThreadItem({
         isActive={isActive}
         tooltip={displayName}
       >
-        <Link href={`/chat/${thread._id}`} className="flex items-center gap-2">
+        <Link 
+          href={`/chat/${thread._id}`} 
+          className="flex items-center gap-2"
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+          }}
+        >
           {/* Show loading spinner when collapsed and loading, otherwise show chat icon */}
           <MessageSquare className={`h-4 w-4 ${isLoading ? 'group-data-[collapsible=icon]:hidden' : ''}`} />
           {isLoading && (

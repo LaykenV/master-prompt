@@ -11,6 +11,7 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isScrollingProgrammatically = useRef(false)
+  const [isScrollable, setIsScrollable] = useState(false)
 
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
@@ -41,6 +42,9 @@ export function useAutoScroll(dependencies: React.DependencyList) {
       const distanceFromBottom = Math.abs(
         scrollHeight - scrollTop - clientHeight
       )
+
+      // Track whether the container can actually scroll
+      setIsScrollable(scrollHeight - clientHeight > 1)
 
       const isScrollingUp = previousScrollTop.current
         ? scrollTop < previousScrollTop.current
@@ -91,6 +95,7 @@ export function useAutoScroll(dependencies: React.DependencyList) {
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current
       const distanceFromBottom = Math.abs(scrollHeight - scrollTop - clientHeight)
       setShouldAutoScroll(distanceFromBottom < ACTIVATION_THRESHOLD)
+      setIsScrollable(scrollHeight - clientHeight > 1)
     }
   }, [])
 
@@ -125,5 +130,6 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     handleTouchStart,
     enableAutoScroll,
     disableAutoScroll,
+    isScrollable,
   }
 }
