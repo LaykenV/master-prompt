@@ -65,7 +65,13 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   }, [])
 
   const handleTouchStart = () => {
-    setShouldAutoScroll(false)
+    const el = containerRef.current
+    if (!el) return
+    // Only disable auto-scroll on touch if the container can actually scroll
+    const canScroll = el.scrollHeight - el.clientHeight > 1
+    if (canScroll) {
+      setShouldAutoScroll(false)
+    }
   }
 
   const enableAutoScroll = useCallback(() => {

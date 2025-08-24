@@ -49,6 +49,9 @@ try polar again
 
 mobile touch auto scroll and master model touch
 selecting thread should close sidebar on mobile
+zoom in on mobile
+
+drag and drop library
 
 rate limiting?
 
