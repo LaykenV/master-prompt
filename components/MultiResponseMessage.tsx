@@ -4,10 +4,12 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
 import { useState, useRef, createRef, MutableRefObject, RefObject, useEffect } from "react";
+import type { ReactElement } from "react";
+import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Loader2, AlertCircle, X, Brain } from "lucide-react";
-import { getModelIcon, getProviderIcon } from "@/convex/agent";
+import { getModelLogo, getProviderLogo } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
 import { MessageBubble } from "./MessageBubble";
 import { AnimatedBeam } from "@/components/magicui/animated-beam";
@@ -20,6 +22,9 @@ interface MultiResponseMessageProps {
 export function MultiResponseMessage({ masterMessageId }: MultiResponseMessageProps) {
   const multiModelRun = useQuery(api.chat.getMultiModelRun, { masterMessageId });
   const availableModels = useQuery(api.chat.getAvailableModels);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [details, setDetails] = useState<{ threadId: string; stage: "initial" | "debate" } | null>(null);
   const [collapsedAll, setCollapsedAll] = useState<boolean>(false);
   const [finalCollapsed, setFinalCollapsed] = useState<boolean>(true);
@@ -53,13 +58,18 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
     return availableModels?.find(m => m.id === modelId);
   };
 
-  // Helper function to get icon by model ID or fallback to provider
-  const getIcon = (modelId: string, provider?: string) => {
-    try {
-      return getModelIcon(modelId as ModelId);
-    } catch {
-      return getProviderIcon(provider || "");
-    }
+  // Helper to render a themed logo (light/dark) for a model or its provider
+  const renderLogo = (modelId: string, provider?: string) => {
+    const logo = (() => {
+      try {
+        return getModelLogo(modelId as ModelId);
+      } catch {
+        return getProviderLogo(provider || "");
+      }
+    })();
+    const isDark = (resolvedTheme ?? "dark") === "dark";
+    const src = mounted ? (isDark ? logo.dark : logo.light) : logo.dark;
+    return (<img src={src} alt={logo.alt} className="h-6 w-6" />);
   };
   // Build targets and tween revealProgress toward them
   useEffect(() => {
@@ -171,7 +181,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                       stage="initial"
                       run={run}
                       modelInfo={getModelInfo(run.modelId)}
-                      getIcon={getIcon}
+                      renderLogo={renderLogo}
                       onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "initial" })}
                       nodeRef={ensureRunRef(initialCardRefs, run.threadId)}
                       anchorBottomRef={ensureRunRef(initialBottomAnchorRefs, run.threadId)}
@@ -192,7 +202,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                         stage="debate"
                         run={run}
                         modelInfo={getModelInfo(run.modelId)}
-                        getIcon={getIcon}
+                        renderLogo={renderLogo}
                         onSeeDetails={() => setDetails({ threadId: run.threadId, stage: "debate" })}
                         nodeRef={ensureRunRef(debateCardRefs, run.threadId)}
                         anchorTopRef={ensureRunRef(debateTopAnchorRefs, run.threadId)}
@@ -221,7 +231,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                     {finalCollapsed ? (
                       <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText="" debateComplete={debateComplete} onExpand={() => setFinalCollapsed(false)} />
                     ) : (
-                      <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={debateComplete ? (multiModelRun.runSummary || "") : ""} />
+                      <FinalSummaryTable structured={multiModelRun.runSummaryStructured} fallbackText={debateComplete ? (multiModelRun.runSummary || "") : ""} renderLogo={renderLogo} />
                     )}
                   </div>
                 </div>
@@ -234,7 +244,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                 modelId={selectedRun?.modelId || ""}
                 modelInfo={selectedRun ? getModelInfo(selectedRun.modelId) : undefined}
                 isMaster={!!selectedRun?.isMaster}
-                getIcon={getIcon}
+                renderLogo={renderLogo}
               />
             </>
           )}
@@ -316,7 +326,7 @@ function RunStatusCard({
   stage,
   run,
   modelInfo,
-  getIcon,
+  renderLogo,
   onSeeDetails,
   nodeRef,
   anchorTopRef,
@@ -326,7 +336,7 @@ function RunStatusCard({
   stage: "initial" | "debate";
   run: { modelId: string; threadId: string; isMaster: boolean; status: "initial" | "debate" | "complete" | "error"; errorMessage?: string };
   modelInfo?: { displayName: string; provider: string };
-  getIcon: (modelId: string, provider?: string) => string;
+  renderLogo: (modelId: string, provider?: string) => ReactElement;
   onSeeDetails: () => void;
   nodeRef?: RefObject<HTMLDivElement | null>;
   anchorTopRef?: RefObject<HTMLDivElement | null>;
@@ -340,12 +350,12 @@ function RunStatusCard({
       {/* Top anchor for beams */}
       {anchorTopRef && <div ref={anchorTopRef} className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1 h-0 w-0" />}
       <Card className={`p-3 surface-input ${run.isMaster ? 'border-primary/70' : ''}`}>
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{getIcon(run.modelId, modelInfo?.provider)}</span>
-          <div className="flex flex-col">
-            <div className="text-sm font-medium">{modelInfo?.displayName || run.modelId}{run.isMaster && " (Master)"}</div>
-            <div className="text-[11px] text-muted-foreground">{label}</div>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{renderLogo(run.modelId, modelInfo?.provider)}</span>
+            <div className="text-sm font-medium">{modelInfo?.displayName || run.modelId}</div>
           </div>
+          <div className="text-[11px] text-muted-foreground">{label}{run.isMaster && " (Master)"}</div>
         </div>
         <div className="mt-2 flex items-center justify-between gap-3">
           <StatusIcon status={run.status} stage={stage} visible={showStatus} />
@@ -363,12 +373,12 @@ function RunStatusCard({
   );
 }
 
-function FinalSummaryTable({ structured, fallbackText }: { structured?: {
+function FinalSummaryTable({ structured, fallbackText, renderLogo }: { structured?: {
   originalPrompt: string;
   overview?: string;
   crossModel: { agreements: string[]; disagreements: string[]; convergenceSummary: string };
   perModel: Array<{ modelId: string; modelName: string; initialSummary: string; refinedSummary: string; changedPosition: boolean; keyPoints: string[] }>;
-}, fallbackText?: string }) {
+}, fallbackText?: string, renderLogo: (modelId: string, provider?: string) => ReactElement }) {
   if (!structured) {
     return (
       <div className="relative">
@@ -445,7 +455,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
               <tr key={row.modelId}>
                 <td className="summary-col-model">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{getIconSafe(row.modelId)}</span>
+                    <span className="text-sm">{renderLogo(row.modelId)}</span>
                     <span className="font-medium">{row.modelName}</span>
                   </div>
                 </td>
@@ -474,7 +484,7 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
           <div key={row.modelId} className="model-summary-card">
             <div className="msc-header">
               <div className="msc-model">
-                <span className="text-sm">{getIconSafe(row.modelId)}</span>
+                <span className="text-sm">{renderLogo(row.modelId)}</span>
                 <span className="msc-model-name">{row.modelName}</span>
               </div>
               <Badge variant={row.changedPosition ? "default" : "secondary"} className="text-xs">
@@ -503,10 +513,6 @@ function FinalSummaryTable({ structured, fallbackText }: { structured?: {
     </Card>
     </div>
   );
-}
-
-function getIconSafe(modelId: string) {
-  try { return getModelIcon(modelId as ModelId); } catch { return "🤖"; }
 }
 
 function CollapsedWholeCard({ initialComplete, debateStarted, debateComplete, onExpand }: { initialComplete: boolean; debateStarted: boolean; debateComplete: boolean; onExpand: () => void }) {
@@ -568,7 +574,7 @@ function FinalSummaryCompactCard({ structured, fallbackText, onExpand, debateCom
   );
 }
 
-function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isMaster, getIcon }: { open: boolean; onOpenChange: (open: boolean) => void; threadId?: string; modelId?: string; modelInfo?: { displayName: string; provider: string }; isMaster?: boolean; getIcon: (modelId: string, provider?: string) => string }) {
+function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isMaster, renderLogo }: { open: boolean; onOpenChange: (open: boolean) => void; threadId?: string; modelId?: string; modelInfo?: { displayName: string; provider: string }; isMaster?: boolean; renderLogo: (modelId: string, provider?: string) => ReactElement }) {
   if (!open) return null;
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => onOpenChange(false)}>
@@ -586,7 +592,7 @@ function RunDetailsModal({ open, onOpenChange, threadId, modelId, modelInfo, isM
               modelId={modelId || ""}
               modelInfo={modelInfo}
               isMaster={!!isMaster}
-              getIcon={getIcon}
+              renderLogo={renderLogo}
             />
           )}
         </div>
@@ -600,7 +606,7 @@ interface ModelResponseCardProps {
   modelId: string;
   modelInfo?: { displayName: string; provider: string };
   isMaster: boolean;
-  getIcon: (modelId: string, provider?: string) => string;
+  renderLogo: (modelId: string, provider?: string) => ReactElement;
 }
 
 function ModelResponseCard({ 
@@ -608,7 +614,7 @@ function ModelResponseCard({
   modelId, 
   modelInfo, 
   isMaster, 
-  getIcon,
+  renderLogo,
 }: ModelResponseCardProps) {
   const messages = useThreadMessages(
     api.chat.listSecondaryThreadMessages,
@@ -632,7 +638,7 @@ function ModelResponseCard({
     <Card className={`transition-colors hover:bg-card/80 surface-input ${isMaster ? 'border-primary' : 'border-border'}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm">{getIcon(modelId, modelInfo?.provider)}</span>
+          <span className="text-sm">{renderLogo(modelId, modelInfo?.provider)}</span>
           <span className="text-sm font-medium">
             {modelInfo?.displayName || modelId}{isMaster && " (Master)"}
           </span>

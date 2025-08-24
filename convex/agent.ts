@@ -102,18 +102,6 @@ export function getChatModel(modelId: ModelId) {
   return AVAILABLE_MODELS[modelId].chatModel();
 }
 
-// Helper function to get provider icon by provider name (for backward compatibility)
-export function getProviderIcon(provider: string) {
-  switch (provider) {
-    case "openai":
-      return "🤖";
-    case "google":
-      return "🔮";
-    default:
-      return "🤖";
-  }
-}
-
 // Themed logos for providers served from the public/ directory
 export type ThemedLogo = { light: string; dark: string; alt: string };
 
@@ -135,8 +123,8 @@ const PROVIDER_LOGOS: Record<string, ThemedLogo> = {
     alt: "Anthropic",
   },
   "Open Source": {
-    light: "/icons8-meta-50-2.svg",
-    dark: "/icons8-meta-50-dark.svg",
+    light: "/icons8-meta.svg",
+    dark: "/icons8-meta.svg",
     alt: "Open Source",
   },
   xAI: {
@@ -150,12 +138,6 @@ export function getProviderLogo(provider: string): ThemedLogo {
   const logo = PROVIDER_LOGOS[provider];
   if (!logo) return { light: "/convex.svg", dark: "/convex.svg", alt: provider || "Model" };
   return logo;
-}
-
-// Back-compat: derive a simple emoji icon from provider
-export function getModelIcon(modelId: ModelId) {
-  const provider = AVAILABLE_MODELS[modelId].provider;
-  return getProviderIcon(provider);
 }
 
 export function getModelLogo(modelId: ModelId): ThemedLogo {
@@ -206,9 +188,3 @@ export const summaryAgent = new Agent(components.agent, {
         console.log(`Model: ${model}, Usage:`, usage);
     },
 });
-
-// Shared helper for clients to check if files are supported by a model
-export function modelSupportsFiles(modelId: ModelId): boolean {
-  return AVAILABLE_MODELS[modelId].fileSupport;
-}
-

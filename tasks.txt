@@ -18,11 +18,11 @@
 //add copy to all messages
 
 //review code for commit
-max 3/4?
-drag selected models for primary
+//max 3/4?
+//drag selected models for primary
 
 
-fix logos on multi card
+ fix logos on multi card
 remove getprovidericon modelsupportsfiles
 
 figure out subscription and usage
@@ -41,7 +41,7 @@ new chat ui
 
 auth migration? better auth? https://convex-better-auth.netlify.app/ or clerk
 
-routing? react router inside /chat?
+routing? react router inside /chat? local first?
 
 test everything
 
