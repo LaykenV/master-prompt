@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 
 // How many pixels from the bottom of the container to enable auto-scroll
 const ACTIVATION_THRESHOLD = 50
@@ -9,15 +9,33 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const previousScrollTop = useRef<number | null>(null)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isScrollingProgrammatically = useRef(false)
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
+      isScrollingProgrammatically.current = true
       containerRef.current.scrollTop = containerRef.current.scrollHeight
+      // Reset the flag after a short delay to allow the scroll event to fire
+      setTimeout(() => {
+        isScrollingProgrammatically.current = false
+      }, 50)
     }
-  }
+  }, [])
 
-  const handleScroll = () => {
-    if (containerRef.current) {
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current || isScrollingProgrammatically.current) {
+      return
+    }
+
+    // Clear any pending scroll timeout to debounce rapid scroll events
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (!containerRef.current) return
+
       const { scrollTop, scrollHeight, clientHeight } = containerRef.current
 
       const distanceFromBottom = Math.abs(
@@ -43,16 +61,18 @@ export function useAutoScroll(dependencies: React.DependencyList) {
       }
 
       previousScrollTop.current = scrollTop
-    }
-  }
+    }, 10) // Small debounce delay
+  }, [])
 
   const handleTouchStart = () => {
     setShouldAutoScroll(false)
   }
 
-  const enableAutoScroll = () => {
+  const enableAutoScroll = useCallback(() => {
     setShouldAutoScroll(true)
-  }
+    // Immediately scroll to bottom when enabling auto-scroll
+    scrollToBottom()
+  }, [scrollToBottom])
 
   const disableAutoScroll = () => {
     setShouldAutoScroll(false)
@@ -70,14 +90,26 @@ export function useAutoScroll(dependencies: React.DependencyList) {
 
   useEffect(() => {
     if (shouldAutoScroll) {
-      // Use setTimeout to ensure DOM updates are complete
-      const timeoutId = setTimeout(() => {
-        scrollToBottom()
-      }, 0)
-      return () => clearTimeout(timeoutId)
+      // Use requestAnimationFrame followed by setTimeout to ensure DOM updates are complete
+      const rafId = requestAnimationFrame(() => {
+        const timeoutId = setTimeout(() => {
+          scrollToBottom()
+        }, 0)
+        return () => clearTimeout(timeoutId)
+      })
+      return () => cancelAnimationFrame(rafId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies)
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return {
     containerRef,

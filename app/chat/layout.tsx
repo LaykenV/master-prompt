@@ -310,20 +310,22 @@ function ThreadItem({
           <span className="truncate flex-1 group-data-[collapsible=icon]:hidden">
             {displayName}
           </span>
-          {/* Show loading spinner in expanded mode */}
-          {isLoading && (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto group-data-[collapsible=icon]:hidden" />
-          )}
         </Link>
       </SidebarMenuButton>
-      <SidebarMenuAction 
-        onClick={onDelete}
-        className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-        aria-label={`Delete chat: ${displayName}`}
-      >
-        <X className="h-3 w-3" />
-        <span className="sr-only">Delete chat</span>
-      </SidebarMenuAction>
+      {isLoading ? (
+        <SidebarMenuAction className="group-data-[collapsible=icon]:hidden">
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        </SidebarMenuAction>
+      ) : (
+        <SidebarMenuAction 
+          onClick={onDelete}
+          className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          aria-label={`Delete chat: ${displayName}`}
+        >
+          <X className="h-3 w-3" />
+          <span className="sr-only">Delete chat</span>
+        </SidebarMenuAction>
+      )}
     </SidebarMenuItem>
   );
 }

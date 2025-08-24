@@ -131,7 +131,7 @@ export const ChatMessages = forwardRef<ChatMessagesHandle, ChatMessagesProps>(fu
       
       {!shouldAutoScroll && (
         <Button
-          onClick={scrollToBottom}
+          onClick={enableAutoScroll}
           className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 user-bubble rounded-xl px-4 py-2.5 shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-2 cursor-pointer"
           size="sm"
           variant="ghost"

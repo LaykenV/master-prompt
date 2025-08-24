@@ -70,6 +70,22 @@ export const getUser = query({
     },
   });
 
+export const getUserServer = internalQuery({
+    args: {},
+    returns: v.object({
+        _id: v.optional(v.id("users")),
+        email: v.optional(v.string()),
+    }),
+    handler: async (ctx) => {
+        const userId = await getAuthUserId(ctx);
+        const user = userId === null ? null : await ctx.db.get(userId);
+        return {
+            _id: user?._id,
+            email: user?.email,
+        };
+    },
+});
+
 // Get available models for the UI
 export const getAvailableModels = query({
     args: {},

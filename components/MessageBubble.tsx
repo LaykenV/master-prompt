@@ -23,7 +23,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   // Assistant: plain text, no bubble
   if (message.role === "assistant") {
     return (
-      <div className="relative pb-8">
+      <div className="group relative pb-8">
         <div className="flex justify-start">
           <div className="assistant-text w-full">
             {/* Assistant attachments (no bubble) */}
@@ -54,7 +54,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             )}
           </div>
         </div>
-        <div className="absolute bottom-0 left-0">
+        <div className="absolute bottom-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <CopyButton content={copyContent} />
         </div>
       </div>
@@ -63,7 +63,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   // User bubble with subtle gradient and centered feel
   return (
-    <div className="relative pb-8">
+    <div className="group relative pb-8">
       <div className="flex justify-end">
         <div 
           className="user-bubble ml-12 max-w-[68%] rounded-lg p-3.5 transition-colors leading-relaxed tracking-[0.005em]"
@@ -100,7 +100,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           )}
         </div>
       </div>
-      <div className="absolute bottom-0 right-0">
+      <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <CopyButton content={copyContent} />
       </div>
     </div>

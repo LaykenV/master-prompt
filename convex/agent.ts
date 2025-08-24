@@ -240,8 +240,8 @@ export function createAgentWithModel(modelId: ModelId) {
         name: "Master Prompt",
         chat: getChatModel(modelId),
         instructions: "You are a helpful assistant that can answer questions and help with tasks.",
-        usageHandler: async (ctx, { model, usage, providerMetadata }) => {
-            console.log(`Model: ${model}, Usage:`, usage, "Provider Metadata:", providerMetadata);
+        usageHandler: async (ctx, { model, usage, providerMetadata, userId }) => {
+            console.log(`Model: ${model}, Usage:`, usage, "Provider Metadata:", providerMetadata, "User ID:", userId);
             console.log("Usage:", usage.completionTokens, usage.promptTokens, usage.totalTokens);
             const reasoningTokens = getReasoningTokenCount(providerMetadata);
             const totalWithReasoningTokens = usage.totalTokens + reasoningTokens;
@@ -282,8 +282,9 @@ export const summaryAgent = new Agent(components.agent, {
     name: "Summary Agent",
     chat: getChatModel("gpt-oss-120b"),
     instructions: "You are a helpful assistant that can answer questions and help with tasks.",
-    usageHandler: async (ctx, { model, usage, providerMetadata}) => {
-        console.log(`Model: ${model}, Usage:`, usage);
+    usageHandler: async (ctx, { model, usage, providerMetadata, userId}) => {
+        console.log(`Model: ${model}, Usage:`, usage, "User ID:", userId);
+        //const user = await ctx.runQuery(ctx.db.users.getById, userId);
         const reasoningTokens = getReasoningTokenCount(providerMetadata);
         const totalWithReasoningTokens = usage.totalTokens + reasoningTokens;
         console.log("Total tokens incl. reasoning:", totalWithReasoningTokens, {

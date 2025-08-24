@@ -90,6 +90,22 @@ export function MessageInput({
     }
   }, [isGenerating])
 
+  // Add global keyboard shortcut to focus the message input
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key === "k" &&
+        (event.metaKey || event.ctrlKey)
+      ) {
+        event.preventDefault()
+        textAreaRef.current?.focus()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB client-side cap
   // Strict allow/deny lists to avoid wildcard matches like text/xml or image/heic
   const ALLOWED_MIME_TYPES: Array<string> = [
