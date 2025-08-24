@@ -38,6 +38,15 @@ $99 has $18/week limit
 estimated % on frontend, block if over
 check in backend
 
+switching to stripe
+set up dashboard, webhook, subscriptions table
+set up usage table
+track all usage
+ui tracker and backend checks
+
+deploy
+try polar again
+
 rate limiting?
 
 resend?
