@@ -102,6 +102,23 @@ export function getChatModel(modelId: ModelId) {
   return AVAILABLE_MODELS[modelId].chatModel();
 }
 
+// USD price per 1M tokens for input (prompt) and output (completion + reasoning)
+export const MODEL_PRICING_USD_PER_MTOKEN: Record<
+  ModelId,
+  { input: number; output: number }
+> = {
+  "gemini-2.5-flash": { input: 0.3, output: 2.5 },
+  "gemini-2.5-pro": { input: 1.25, output: 10 },
+  "gpt-5": { input: 1.25, output: 10 },
+  "gpt-5-mini": { input: 0.25, output: 2 },
+  "gpt-5-nano": { input: 0.05, output: 0.4 },
+  "claude-4-sonnet": { input: 3, output: 15 },
+  "gpt-oss-120b": { input: 0.15, output: 0.6 },
+  "gpt-oss-20b": { input: 0.05, output: 0.2 },
+  "llama-3.3-70b": { input: 0.58, output: 0.62 },
+  "Grok-4": { input: 3, output: 15 },
+} as const;
+
 // Themed logos for providers served from the public/ directory
 export type ThemedLogo = { light: string; dark: string; alt: string };
 
@@ -165,26 +182,137 @@ export function getModelLogo(modelId: ModelId): ThemedLogo {
   return getProviderLogo(provider);
 }
 
+// Safely extract and sum any "reasoningTokens" reported by providers in providerMetadata
+function getReasoningTokenCount(providerMetadata: unknown): number {
+  if (!providerMetadata || typeof providerMetadata !== "object") return 0;
+  let totalReasoningTokens = 0;
+  try {
+    const metadataAsRecord = providerMetadata as Record<string, unknown>;
+    for (const providerKey of Object.keys(metadataAsRecord)) {
+      const providerData = metadataAsRecord[providerKey];
+      if (providerData && typeof providerData === "object") {
+        const maybeReasoning = (providerData as { reasoningTokens?: unknown }).reasoningTokens;
+        if (typeof maybeReasoning === "number" && Number.isFinite(maybeReasoning)) {
+          totalReasoningTokens += maybeReasoning;
+        }
+      }
+    }
+  } catch {
+    // Best-effort parsing; ignore malformed metadata
+    return 0;
+  }
+  return totalReasoningTokens;
+}
+
+type TokenUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+};
+
+function getCostBreakdownUSD(
+  modelId: ModelId,
+  usage: TokenUsage,
+  providerMetadata: unknown,
+):
+  | {
+      inputUSD: number;
+      outputUSD: number;
+      totalUSD: number;
+      reasoningTokens: number;
+      outputTokens: number;
+      rates: { input: number; output: number };
+    }
+  | null {
+  const rates = MODEL_PRICING_USD_PER_MTOKEN[modelId];
+  if (!rates) return null;
+  const reasoningTokens = getReasoningTokenCount(providerMetadata);
+  const outputTokens = usage.completionTokens + reasoningTokens;
+  const inputUSD = (usage.promptTokens / 1_000_000) * rates.input;
+  const outputUSD = (outputTokens / 1_000_000) * rates.output;
+  const totalUSD = inputUSD + outputUSD;
+  return { inputUSD, outputUSD, totalUSD, reasoningTokens, outputTokens, rates };
+}
+
 // Helper function to create an agent with a specific model
 export function createAgentWithModel(modelId: ModelId) {
     return new Agent(components.agent, {
         name: "Master Prompt",
         chat: getChatModel(modelId),
         instructions: "You are a helpful assistant that can answer questions and help with tasks.",
-        usageHandler: async (ctx, { model, usage}) => {
-            console.log(`Model: ${model}, Usage:`, usage);
+        usageHandler: async (ctx, { model, usage, providerMetadata }) => {
+            console.log(`Model: ${model}, Usage:`, usage, "Provider Metadata:", providerMetadata);
+            console.log("Usage:", usage.completionTokens, usage.promptTokens, usage.totalTokens);
+            const reasoningTokens = getReasoningTokenCount(providerMetadata);
+            const totalWithReasoningTokens = usage.totalTokens + reasoningTokens;
+            console.log("Total tokens incl. reasoning:", totalWithReasoningTokens, {
+              baseTotal: usage.totalTokens,
+              reasoningTokens,
+            });
+            const cost = getCostBreakdownUSD(modelId, usage, providerMetadata);
+            if (cost) {
+              console.log(
+                "Estimated cost (USD):",
+                Number.isFinite(cost.totalUSD) ? cost.totalUSD.toFixed(6) : cost.totalUSD,
+                {
+                  modelId,
+                  inputUSD: cost.inputUSD,
+                  outputUSD: cost.outputUSD,
+                  rates: cost.rates,
+                  tokens: {
+                    promptTokens: usage.promptTokens,
+                    completionTokens: usage.completionTokens,
+                    reasoningTokens: cost.reasoningTokens,
+                    outputTokens: cost.outputTokens,
+                    totalTokensInclReasoning: totalWithReasoningTokens,
+                  },
+                },
+              );
+            } else {
+              console.log("No pricing data found for model:", modelId);
+            }
         },
     });
 }
 
 // Default agent instance for saving messages and other operations
-export const masterPromptAgent = createAgentWithModel("gpt-5-mini");
+export const masterPromptAgent = createAgentWithModel("gpt-5");
 
 export const summaryAgent = new Agent(components.agent, {
     name: "Summary Agent",
     chat: getChatModel("gpt-oss-120b"),
     instructions: "You are a helpful assistant that can answer questions and help with tasks.",
-    usageHandler: async (ctx, { model, usage}) => {
+    usageHandler: async (ctx, { model, usage, providerMetadata}) => {
         console.log(`Model: ${model}, Usage:`, usage);
+        const reasoningTokens = getReasoningTokenCount(providerMetadata);
+        const totalWithReasoningTokens = usage.totalTokens + reasoningTokens;
+        console.log("Total tokens incl. reasoning:", totalWithReasoningTokens, {
+            baseTotal: usage.totalTokens,
+            reasoningTokens,
+        });
+        const modelId: ModelId = "gpt-oss-120b";
+        const cost = getCostBreakdownUSD(modelId, usage, providerMetadata);
+        if (cost) {
+          console.log(
+            "Estimated cost (USD):",
+            Number.isFinite(cost.totalUSD) ? cost.totalUSD.toFixed(6) : cost.totalUSD,
+            {
+              modelId,
+              inputUSD: cost.inputUSD,
+              outputUSD: cost.outputUSD,
+              rates: cost.rates,
+              tokens: {
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                reasoningTokens: cost.reasoningTokens,
+                outputTokens: cost.outputTokens,
+                totalTokensInclReasoning: totalWithReasoningTokens,
+              },
+            },
+          );
+        } else {
+          console.log("No pricing data found for model:", modelId);
+        }
     },
+
 });

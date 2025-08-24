@@ -70,6 +70,10 @@ export default function ThreadPage() {
       try {
         if (typeof window !== "undefined") {
           window.sessionStorage.removeItem(`pendingMessage:${threadId}`);
+          // Dispatch custom event to notify other components
+          window.dispatchEvent(new CustomEvent('pendingMessageChange', { 
+            detail: { threadId } 
+          }));
         }
       } catch {}
       setPendingFromRedirect(null);

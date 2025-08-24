@@ -29,6 +29,7 @@ import {
   X, 
   LogOut,
   Settings,
+  Loader2,
 } from "lucide-react";
 
 import { useAuthActions } from "@convex-dev/auth/react";
@@ -37,6 +38,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { useThreadLoadingState } from "@/hooks/use-thread-loading-state";
 export default function ChatLayout({
   children,
 }: {
@@ -141,33 +143,14 @@ export default function ChatLayout({
                       No chats yet
                     </div>
                   ) : (
-                    threads.map((thread) => {
-                      const isActive = activeThreadId === thread._id;
-                      return (
-                        <SidebarMenuItem key={thread._id}>
-                          <SidebarMenuButton 
-                            asChild 
-                            isActive={isActive}
-                            tooltip={thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}
-                          >
-                            <Link href={`/chat/${thread._id}`} className="flex items-center gap-2">
-                              <MessageSquare className="h-4 w-4" />
-                              <span className="truncate">
-                                {thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}
-                              </span>
-                            </Link>
-                          </SidebarMenuButton>
-                          <SidebarMenuAction 
-                            onClick={() => openDeleteDialog(thread)}
-                            className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                            aria-label={`Delete chat: ${thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`}`}
-                          >
-                            <X className="h-3 w-3" />
-                            <span className="sr-only">Delete chat</span>
-                          </SidebarMenuAction>
-                        </SidebarMenuItem>
-                      );
-                    })
+                    threads.map((thread) => (
+                      <ThreadItem
+                        key={thread._id}
+                        thread={thread}
+                        isActive={activeThreadId === thread._id}
+                        onDelete={() => openDeleteDialog(thread)}
+                      />
+                    ))
                   )}
                 </SidebarMenu>
               )}
@@ -289,6 +272,47 @@ export default function ChatLayout({
         </div>
       )}
     </SidebarProvider>
+  );
+}
+
+function ThreadItem({ 
+  thread, 
+  isActive, 
+  onDelete 
+}: { 
+  thread: { _id: string; title?: string | null; summary?: string | null };
+  isActive: boolean;
+  onDelete: () => void;
+}) {
+  const isLoading = useThreadLoadingState(thread._id, isActive);
+  const displayName = thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton 
+        asChild 
+        isActive={isActive}
+        tooltip={displayName}
+      >
+        <Link href={`/chat/${thread._id}`} className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4" />
+          <span className="truncate flex-1">
+            {displayName}
+          </span>
+          {isLoading && (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto absolute right-2" />
+          )}
+        </Link>
+      </SidebarMenuButton>
+      <SidebarMenuAction 
+        onClick={onDelete}
+        className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+        aria-label={`Delete chat: ${displayName}`}
+      >
+        <X className="h-3 w-3" />
+        <span className="sr-only">Delete chat</span>
+      </SidebarMenuAction>
+    </SidebarMenuItem>
   );
 }
 
