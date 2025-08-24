@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
+import { useConvexAuth } from "convex/react";
 import { useMemo, useState, useEffect } from "react";
 
 /**
@@ -9,6 +10,7 @@ import { useMemo, useState, useEffect } from "react";
 export function useThreadLoadingState(threadId: string, isActive: boolean = false) {
   // Track pending message state reactively
   const [hasPendingFromRedirect, setHasPendingFromRedirect] = useState(false);
+  const { isAuthenticated } = useConvexAuth();
 
   // Check sessionStorage for pending message and listen for storage events
   useEffect(() => {
@@ -52,7 +54,7 @@ export function useThreadLoadingState(threadId: string, isActive: boolean = fals
   // Only get thread messages for the active thread to avoid too many queries
   const messages = useThreadMessages(
     api.chat.listThreadMessages,
-    isActive ? { threadId } : "skip",
+    isAuthenticated && isActive ? { threadId } : "skip",
     { initialNumItems: 10, stream: true }
   );
 
