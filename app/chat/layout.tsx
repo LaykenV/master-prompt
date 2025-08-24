@@ -52,7 +52,7 @@ export default function ChatLayout({
   const deleteThread = useAction(api.chat.deleteThread);
   const threads = useQuery(
     api.chat.getThreads,
-    { paginationOpts: { numItems: 50, cursor: null } }
+    isAuthenticated ? { paginationOpts: { numItems: 50, cursor: null } } : "skip"
   );
 
   const [confirmDelete, setConfirmDelete] = useState<{
@@ -145,7 +145,7 @@ export default function ChatLayout({
                     <div className="text-sm text-muted-foreground px-2 py-4" role="status" aria-label="Loading chats">
                       Loading chats...
                     </div>
-                  ) : threads === null || threads.length === 0 ? (
+                  ) : !threads || threads.length === 0 ? (
                     <div className="text-sm text-muted-foreground px-2 py-4">
                       No chats yet
                     </div>
