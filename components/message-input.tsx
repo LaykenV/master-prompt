@@ -313,7 +313,11 @@ export function MessageInput({
 
       {/* Unified floating bottom section: model picker, inline file previews, and actions */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
-        <div ref={bottomRef} className="pointer-events-auto border-t surface-input px-2 py-2 sm:px-3 sm:py-2">
+        <div
+          ref={bottomRef}
+          className="pointer-events-auto border-t surface-input px-2 py-2 sm:px-3 sm:py-2"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
+        >
           <div className="flex items-center gap-2">
             <div className="shrink-0">
               {(() => {

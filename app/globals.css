@@ -407,6 +407,7 @@
     margin: 0.5rem;
     /* Calculate height accounting for margin */
     height: calc(100vh - 1rem);
+    height: calc(100dvh - 1rem);
     /* Same shadows as sidebar - stronger light-mode shadows */
     box-shadow:
       0 10px 25px hsl(var(--foreground) / 0.08),
@@ -433,6 +434,7 @@
     margin: 0.5rem;
     /* Calculate height accounting for margin */
     height: calc(100vh - 1rem);
+    height: calc(100dvh - 1rem);
     /* Same shadows as sidebar - subtler dark mode shadows */
     box-shadow:
       0 10px 25px hsl(var(--foreground) / 0.04),
@@ -453,21 +455,24 @@
     );
   }
 
-  /* Ensure html and body take full height and prevent scrolling */
+  /* Ensure html and body take full height; prefer dynamic viewport units on mobile */
   html, body {
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
   }
 
   /* Lock the main layout container */
   [data-sidebar-provider] {
     height: 100vh;
+    height: 100dvh; /* iOS Safari dynamic viewport */
     overflow: hidden;
   }
 
   /* Lock the root app container */
   #__next, [data-nextjs-scroll-focus-boundary] {
     height: 100%;
+    height: 100dvh;
     overflow: hidden;
   }
 

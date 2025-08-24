@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
 
 export default function Home() {
@@ -10,7 +11,7 @@ export default function Home() {
         <h1 className="text-5xl font-bold">Mind Mesh</h1>
         <p className="text-lg opacity-80">Many Models, One Mind.</p>
         <div className="space-y-4">
-          <button onClick={() => signIn("google")}>Sign in with Google</button>
+          <Button onClick={() => signIn("google")} className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">Sign in with Google</Button>
         </div>
       </div>
     </main>
