@@ -9,13 +9,14 @@ import { ChatMessages, type ChatMessagesHandle } from "@/components/ChatMessages
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 import { toast } from "sonner";
+import { useConvexAuth } from "convex/react";
 
 export default function ThreadPage() {
   const params = useParams();
-
+  const { isAuthenticated } = useConvexAuth();
   const threadId = String((params as { threadId: string }).threadId);
   const user = useQuery(api.chat.getUser);
-  const threadModel = useQuery(api.chat.getThreadModel, { threadId });
+  const threadModel = useQuery(api.chat.getThreadModel, isAuthenticated ? { threadId } : "skip");
   const availableModels = useQuery(api.chat.getAvailableModels);
   const sendMessage = useMutation(api.chat.sendMessage).withOptimisticUpdate(
     optimisticallySendMessage(api.chat.listThreadMessages)

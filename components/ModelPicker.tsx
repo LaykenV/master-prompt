@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "next-themes";
@@ -38,16 +38,17 @@ export function ModelPicker({
 }: ModelPickerProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const { isAuthenticated } = useConvexAuth();
   useEffect(() => setMounted(true), []);
   const availableModels = useQuery(api.chat.getAvailableModels);
-  const threadModel = useQuery(api.chat.getThreadModel, threadId ? { threadId } : "skip");
+  const threadModel = useQuery(api.chat.getThreadModel, isAuthenticated && threadId ? { threadId } : "skip");
   const latestMultiRun = useQuery(
     api.chat.getLatestMultiModelRunForThread,
-    threadId ? { threadId } : "skip"
+    isAuthenticated && threadId ? { threadId } : "skip"
   );
   const latestMessageRun = useQuery(
     api.chat.getMultiModelRun,
-    latestUserMessageId ? { masterMessageId: latestUserMessageId } : "skip"
+    isAuthenticated && latestUserMessageId ? { masterMessageId: latestUserMessageId } : "skip"
   );
   const [multiSelectState, setMultiSelectState] = useState<{
     master: string;
