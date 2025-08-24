@@ -300,7 +300,7 @@ export function MessageInput({
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input p-3 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 surface-input",
+              "z-10 w-full grow resize-none rounded-xl border border-input p-3 text-base md:text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 surface-input",
               // Right padding for icons, bottom padding is added dynamically via style
               "pr-3",
               className

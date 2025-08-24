@@ -131,6 +131,12 @@
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  /* Prevent iOS Safari zoom on focus by ensuring minimum 16px text size on mobile */
+  @media (max-width: 820px) {
+    input, textarea, select, button {
+      font-size: 16px;
+    }
+  }
   
   /* Focus styles for better accessibility */
   *:focus-visible {
