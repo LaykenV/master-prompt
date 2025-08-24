@@ -2,7 +2,7 @@
 
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +64,24 @@ export function ModelPicker({
   type DragTarget = { target: "master" } | { target: "secondary"; index: number } | null;
   const [draggingModelId, setDraggingModelId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<DragTarget>(null);
+
+  // Touch long-press to pick + tap-to-drop (mobile fallback)
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const touchLongPressTimerRef = useRef<number | null>(null);
+  const touchMovedRef = useRef(false);
+
+  const clearTouchTimer = () => {
+    if (touchLongPressTimerRef.current) {
+      window.clearTimeout(touchLongPressTimerRef.current);
+      touchLongPressTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTouchTimer();
+    };
+  }, []);
 
   // Initialize client model from thread model
   useEffect(() => {
@@ -209,6 +227,51 @@ export function ModelPicker({
     setDragOverTarget(null);
   };
 
+  // Touch handlers for cards (long-press to pick, then tap zone to drop)
+  const TOUCH_LONG_PRESS_MS = 300;
+
+  const onCardTouchStart = (e: React.TouchEvent, modelId: string) => {
+    e.stopPropagation();
+    // Ignore if already dragging
+    if (isTouchDragging) return;
+    touchMovedRef.current = false;
+    clearTouchTimer();
+    touchLongPressTimerRef.current = window.setTimeout(() => {
+      setDraggingModelId(modelId);
+      setIsTouchDragging(true);
+    }, TOUCH_LONG_PRESS_MS);
+  };
+
+  const onCardTouchMove = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    // Mark movement to suppress click on touchend
+    if (touchLongPressTimerRef.current || isTouchDragging) {
+      touchMovedRef.current = true;
+      // Cancel pending long-press if user moves
+      if (touchLongPressTimerRef.current) clearTouchTimer();
+    }
+  };
+
+  const onCardTouchEnd = (e: React.TouchEvent, clickHandler: () => void) => {
+    // If long-press not yet fired and finger lifted, treat as regular tap
+    if (touchLongPressTimerRef.current) {
+      clearTouchTimer();
+      if (!touchMovedRef.current && !isTouchDragging) {
+        e.preventDefault();
+        e.stopPropagation();
+        clickHandler();
+      }
+      touchMovedRef.current = false;
+      return;
+    }
+    // If we are in drag mode, just prevent this tap from toggling
+    if (isTouchDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    touchMovedRef.current = false;
+  };
+
   const onDragOverZone = (e: React.DragEvent, target: DragTarget) => {
     e.preventDefault();
     setDragOverTarget(target);
@@ -228,6 +291,7 @@ export function ModelPicker({
     handleMasterChange(id);
     setDragOverTarget(null);
     setDraggingModelId(null);
+    setIsTouchDragging(false);
   };
 
   const onDropOnSecondary = (e: React.DragEvent, index: number) => {
@@ -244,6 +308,7 @@ export function ModelPicker({
       // Don't allow dropping the current master into secondary directly
       setDragOverTarget(null);
       setDraggingModelId(null);
+      setIsTouchDragging(false);
       return;
     }
 
@@ -274,6 +339,49 @@ export function ModelPicker({
     onMultiModelChange?.(newState);
     setDragOverTarget(null);
     setDraggingModelId(null);
+    setIsTouchDragging(false);
+  };
+
+  // Helpers to support tap-to-drop using current draggingModelId on touch
+  const dropOnMasterById = (id: string) => {
+    if (!id) return;
+    if (id === multiSelectState.master) return;
+    handleMasterChange(id);
+    setDragOverTarget(null);
+    setDraggingModelId(null);
+    setIsTouchDragging(false);
+  };
+
+  const dropOnSecondaryById = (index: number, id: string) => {
+    if (!id) return;
+    if (id === multiSelectState.master) {
+      setDragOverTarget(null);
+      setDraggingModelId(null);
+      setIsTouchDragging(false);
+      return;
+    }
+    const isAlreadySecondary = multiSelectState.secondary.includes(id);
+    const nextSecondary = [...multiSelectState.secondary];
+    if (isAlreadySecondary) {
+      const from = nextSecondary.indexOf(id);
+      if (from !== -1 && from !== index) {
+        nextSecondary.splice(from, 1);
+        nextSecondary.splice(index, 0, id);
+      }
+    } else {
+      if (nextSecondary.length < MAX_SECONDARIES) {
+        nextSecondary.splice(index, 0, id);
+      } else {
+        nextSecondary[index] = id;
+      }
+    }
+    const unique = Array.from(new Set(nextSecondary)).slice(0, MAX_SECONDARIES);
+    const newState = { ...multiSelectState, secondary: unique };
+    setMultiSelectState(newState);
+    onMultiModelChange?.(newState);
+    setDragOverTarget(null);
+    setDraggingModelId(null);
+    setIsTouchDragging(false);
   };
 
   if (!availableModels) {
@@ -335,7 +443,14 @@ export function ModelPicker({
     return (
       <button
         type="button"
-        onClick={onClick}
+        onClick={(e) => {
+          if (isTouchDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          onClick();
+        }}
         className={`model-card model-card-wide w-full text-left p-3 ${
           disabled ? "cursor-default opacity-90" : "cursor-pointer"
         } ${selectedClass} lg:hidden`}
@@ -344,6 +459,9 @@ export function ModelPicker({
         draggable
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onTouchStart={(e) => onCardTouchStart(e, model.id)}
+        onTouchMove={onCardTouchMove}
+        onTouchEnd={(e) => onCardTouchEnd(e, onClick)}
       >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -484,6 +602,11 @@ export function ModelPicker({
                 onDragOver={(e) => onDragOverZone(e, { target: "master" })}
                 onDrop={onDropOnMaster}
                 onDragLeave={() => setDragOverTarget(null)}
+                onClick={() => {
+                  if (isTouchDragging && draggingModelId) {
+                    dropOnMasterById(draggingModelId);
+                  }
+                }}
                 className={`rounded-lg border p-2 mb-4 transition-colors ${
                   dragOverTarget && dragOverTarget.target === "master" ? "border-primary/60" : "border-border"
                 }`}
@@ -553,6 +676,11 @@ export function ModelPicker({
                       onDragOver={(e) => onDragOverZone(e, { target: "secondary", index: slotIndex })}
                       onDrop={(e) => onDropOnSecondary(e, slotIndex)}
                       onDragLeave={() => setDragOverTarget(null)}
+                      onClick={() => {
+                        if (isTouchDragging && draggingModelId) {
+                          dropOnSecondaryById(slotIndex, draggingModelId);
+                        }
+                      }}
                       className={`rounded-lg border p-2 transition-colors ${isDragOver ? "border-primary/60" : "border-border"}`}
                     >
                       {slotModel ? (
@@ -561,7 +689,17 @@ export function ModelPicker({
                           draggable
                           onDragStart={(e) => onCardDragStart(e, slotModel.id)}
                           onDragEnd={onDragEnd}
-                          onClick={() => handleMultiModelToggle(slotModel.id)}
+                          onClick={(e) => {
+                            if (isTouchDragging) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              return;
+                            }
+                            handleMultiModelToggle(slotModel.id);
+                          }}
+                          onTouchStart={(e) => onCardTouchStart(e, slotModel.id)}
+                          onTouchMove={onCardTouchMove}
+                          onTouchEnd={(e) => onCardTouchEnd(e, () => handleMultiModelToggle(slotModel.id))}
                         >
                           <div className="flex items-center gap-3 lg:hidden">
                             {renderLogo(slotModel.id, slotModel.provider)}

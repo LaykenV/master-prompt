@@ -44,8 +44,11 @@ set up usage table
 track all usage
 ui tracker and backend checks
 
-deploy
+//deploy
 try polar again
+
+mobile touch auto scroll and master model touch
+selecting thread should close sidebar on mobile
 
 rate limiting?
 
