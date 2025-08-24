@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Bot, Paperclip, Brain, GripVertical, X } from "lucide-react";
+import { ChevronDown, Bot, Paperclip, Brain } from "lucide-react";
 import { getModelLogo, getProviderLogo } from "@/convex/agent";
 import type { ModelId } from "@/convex/agent";
 // no search input
@@ -192,13 +192,7 @@ export function ModelPicker({
     onModelChange?.(modelId);
   };
 
-  // Helper: remove a secondary model
-  const removeSecondary = (modelId: string) => {
-    const newSecondary = multiSelectState.secondary.filter(id => id !== modelId);
-    const newState = { ...multiSelectState, secondary: newSecondary };
-    setMultiSelectState(newState);
-    onMultiModelChange?.(newState);
-  };
+
 
   // DnD handlers
   const onCardDragStart = (e: React.DragEvent, modelId: string) => {
@@ -307,6 +301,128 @@ export function ModelPicker({
     return (<img src={src} alt={logo.alt} className="h-5 w-5" />);
   };
 
+  // Responsive card components
+  type ModelInfo = {
+    id: string;
+    displayName: string;
+    provider?: string;
+    fileSupport?: boolean;
+    reasoning?: boolean;
+  };
+
+  interface ModelCardBaseProps {
+    model: ModelInfo;
+    isPrimary: boolean;
+    isSelected: boolean;
+    disabled: boolean;
+    selectedClass: string;
+    onClick: () => void;
+    onDragStart: (e: React.DragEvent) => void;
+    onDragEnd: () => void;
+  }
+
+  const ModelCardMobile = ({
+    model,
+    isPrimary,
+    isSelected,
+    disabled,
+    selectedClass,
+    onClick,
+    onDragStart,
+    onDragEnd,
+  }: ModelCardBaseProps) => {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`model-card model-card-wide w-full text-left p-3 ${
+          disabled ? "cursor-default opacity-90" : "cursor-pointer"
+        } ${selectedClass} lg:hidden`}
+        aria-selected={isSelected}
+        role="option"
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {isPrimary && (
+              <span className="badge-primary" aria-label="Primary model"></span>
+            )}
+            {renderLogo(model.id, model.provider)}
+            <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-end gap-2">
+              {model.fileSupport && (
+                <span className="badge-file" aria-label="Supports files">
+                  <Paperclip className="h-3 w-3" />
+                  <span className="hidden sm:inline">Files</span>
+                </span>
+              )}
+              {model.reasoning && (
+                <span className="badge-file" aria-label="Supports reasoning">
+                  <Brain className="h-3 w-3" />
+                  <span className="hidden sm:inline">Reasoning</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const ModelCardDesktop = ({
+    model,
+    isPrimary,
+    isSelected,
+    disabled,
+    selectedClass,
+    onClick,
+    onDragStart,
+    onDragEnd,
+  }: ModelCardBaseProps) => {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`model-card model-card-wide w-full text-left p-3 ${
+          disabled ? "cursor-default opacity-90" : "cursor-pointer"
+        } ${selectedClass} hidden lg:block`}
+        aria-selected={isSelected}
+        role="option"
+        draggable
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            {isPrimary && (
+              <span className="badge-primary" aria-label="Primary model"></span>
+            )}
+            {renderLogo(model.id, model.provider)}
+            <span className="font-medium text-base truncate">{model.displayName}</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {model.fileSupport && (
+              <span className="badge-file" aria-label="Supports files">
+                <Paperclip className="h-3 w-3" />
+                <span>Files</span>
+              </span>
+            )}
+            {model.reasoning && (
+              <span className="badge-file" aria-label="Supports reasoning">
+                <Brain className="h-3 w-3" />
+                <span>Reasoning</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </button>
+    );
+  };
+
   // Unified single-button menu with master + optional secondary selection
   const totalSelected = 1 + multiSelectState.secondary.length;
 
@@ -347,10 +463,20 @@ export function ModelPicker({
         <div className="h-[70vh] max-h-[640px]">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-full">
             {/* Selected panel - sticky on desktop, always visible */}
-            <div className="lg:col-span-1 lg:sticky lg:top-2 self-start">
+            <div className="lg:col-span-1 lg:sticky lg:top-2 self-start surface-menu rounded-lg p-3">
               <div className="flex items-center justify-between px-1 mb-3">
                 <span className="text-base font-semibold">Selected</span>
-                <span className="text-xs text-muted-foreground">Drag to assign</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newState = { master: multiSelectState.master, secondary: [] as string[] };
+                    setMultiSelectState(newState);
+                    onMultiModelChange?.(newState);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointert"
+                >
+                  Clear
+                </button>
               </div>
               {/* Master drop zone */}
               <div
@@ -363,29 +489,50 @@ export function ModelPicker({
                 aria-label="Master model drop zone"
               >
                 <div className="text-xs font-medium mb-2 flex items-center gap-2">
-                  <span className="badge-primary" aria-label="Primary model">Primary</span>
+                  <span className="badge-primary" aria-label="Primary model"></span>
                   <span className="text-muted-foreground">Master model</span>
                 </div>
                 {masterModelInfo ? (
-                  <div className="model-card model-card-wide p-3 flex items-center gap-3">
-                    <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden />
-                    {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm sm:text-base truncate">{masterModelInfo.displayName}</div>
+                  <div className="model-card model-card-wide p-3">
+                    <div className="flex items-center gap-3 lg:hidden">
+                      {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm sm:text-base truncate">{masterModelInfo.displayName}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {masterModelInfo.fileSupport && (
+                          <span className="badge-file" aria-label="Supports files">
+                            <Paperclip className="h-3 w-3" />
+                            <span className="hidden sm:inline">Files</span>
+                          </span>
+                        )}
+                        {masterModelInfo.reasoning && (
+                          <span className="badge-file" aria-label="Supports reasoning">
+                            <Brain className="h-3 w-3" />
+                            <span className="hidden sm:inline">Reasoning</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {masterModelInfo.fileSupport && (
-                        <span className="badge-file" aria-label="Supports files">
-                          <Paperclip className="h-3 w-3" />
-                          Files
-                        </span>
-                      )}
-                      {masterModelInfo.reasoning && (
-                        <span className="badge-file" aria-label="Supports reasoning">
-                          <Brain className="h-3 w-3" />
-                          Reasoning
-                        </span>
-                      )}
+                    <div className="hidden lg:flex lg:flex-col lg:gap-2">
+                      <div className="flex items-center gap-2">
+                        {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
+                        <div className="font-medium text-base truncate">{masterModelInfo.displayName}</div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {masterModelInfo.fileSupport && (
+                          <span className="badge-file" aria-label="Supports files">
+                            <Paperclip className="h-3 w-3" />
+                            <span>Files</span>
+                          </span>
+                        )}
+                        {masterModelInfo.reasoning && (
+                          <span className="badge-file" aria-label="Supports reasoning">
+                            <Brain className="h-3 w-3" />
+                            <span>Reasoning</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -409,32 +556,51 @@ export function ModelPicker({
                     >
                       {slotModel ? (
                         <div
-                          className="model-card model-card-wide p-2 flex items-center gap-3"
+                          className="model-card model-card-wide p-2"
                           draggable
                           onDragStart={(e) => onCardDragStart(e, slotModel.id)}
                           onDragEnd={onDragEnd}
                         >
-                          <GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden />
-                          {renderLogo(slotModel.id, slotModel.provider)}
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-sm truncate">{slotModel.displayName}</div>
+                          <div className="flex items-center gap-3 lg:hidden">
+                            {renderLogo(slotModel.id, slotModel.provider)}
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm truncate">{slotModel.displayName}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {slotModel.fileSupport && (
+                                <span className="badge-file" aria-label="Supports files">
+                                  <Paperclip className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Files</span>
+                                </span>
+                              )}
+                              {slotModel.reasoning && (
+                                <span className="badge-file" aria-label="Supports reasoning">
+                                  <Brain className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Reasoning</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <button
-                            type="button"
-                            className="badge-set-primary"
-                            onClick={(e) => { e.stopPropagation(); handleMasterChange(slotModel.id); }}
-                            aria-label={`Set ${slotModel.displayName} as primary`}
-                          >
-                            Set Primary
-                          </button>
-                          <button
-                            type="button"
-                            className="ml-2 inline-flex items-center justify-center rounded-md border px-1.5 py-0.5 text-[10px] bg-card"
-                            aria-label={`Remove ${slotModel.displayName}`}
-                            onClick={(e) => { e.stopPropagation(); removeSecondary(slotModel.id); }}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                          <div className="hidden lg:flex lg:flex-col lg:gap-2">
+                            <div className="flex items-center gap-2">
+                              {renderLogo(slotModel.id, slotModel.provider)}
+                              <div className="font-medium text-base truncate">{slotModel.displayName}</div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {slotModel.fileSupport && (
+                                <span className="badge-file" aria-label="Supports files">
+                                  <Paperclip className="h-3 w-3" />
+                                  <span>Files</span>
+                                </span>
+                              )}
+                              {slotModel.reasoning && (
+                                <span className="badge-file" aria-label="Supports reasoning">
+                                  <Brain className="h-3 w-3" />
+                                  <span>Reasoning</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ) : (
                         <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
@@ -462,58 +628,29 @@ export function ModelPicker({
                           const isSecondary = multiSelectState.secondary.includes(model.id);
                           const disabled = isPrimary || (!isSecondary && multiSelectState.secondary.length >= MAX_SECONDARIES);
                           const selectedClass = isPrimary || isSecondary ? "model-card-selected" : "";
+                          const isSelected = isPrimary || isSecondary;
                           return (
                             <div key={`card-${model.id}`} className="group relative">
-                              <button
-                                type="button"
+                              <ModelCardMobile
+                                model={model as ModelInfo}
+                                isPrimary={isPrimary}
+                                isSelected={isSelected}
+                                disabled={disabled}
+                                selectedClass={selectedClass}
                                 onClick={() => !disabled && handleMultiModelToggle(model.id)}
-                                className={`model-card model-card-wide w-full text-left p-3 ${
-                                  disabled ? "cursor-default opacity-90" : "cursor-pointer"
-                                } ${selectedClass}`}
-                                aria-selected={isPrimary || isSecondary}
-                                role="option"
-                                draggable
                                 onDragStart={(e) => onCardDragStart(e, model.id)}
                                 onDragEnd={onDragEnd}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-2">
-                                    {isPrimary && (
-                                      <span className="badge-primary" aria-label="Primary model">Primary</span>
-                                    )}
-                                    {!isPrimary && isSecondary && (
-                                      <span
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
-                                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
-                                        className="badge-set-primary"
-                                        aria-label={`Set ${model.displayName} as primary`}
-                                      >
-                                        Set Primary
-                                      </span>
-                                    )}
-                                    {renderLogo(model.id, model.provider)}
-                                    <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center justify-end gap-2">
-                                      {model.fileSupport && (
-                                        <span className="badge-file" aria-label="Supports files">
-                                          <Paperclip className="h-3 w-3" />
-                                          Files
-                                        </span>
-                                      )}
-                                      {model.reasoning && (
-                                        <span className="badge-file" aria-label="Supports reasoning">
-                                          <Brain className="h-3 w-3" />
-                                          Reasoning
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
+                              />
+                              <ModelCardDesktop
+                                model={model as ModelInfo}
+                                isPrimary={isPrimary}
+                                isSelected={isSelected}
+                                disabled={disabled}
+                                selectedClass={selectedClass}
+                                onClick={() => !disabled && handleMultiModelToggle(model.id)}
+                                onDragStart={(e) => onCardDragStart(e, model.id)}
+                                onDragEnd={onDragEnd}
+                              />
                             </div>
                           );
                         })}
