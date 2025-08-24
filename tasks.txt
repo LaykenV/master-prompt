@@ -35,6 +35,8 @@ usage handling
 $15 has $2/week limit
 $40 has $6/week limit
 $99 has $18/week limit
+estimated % on frontend, block if over
+check in backend
 
 rate limiting?
 

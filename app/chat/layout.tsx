@@ -109,10 +109,17 @@ export default function ChatLayout({
       <Toaster position="top-center" richColors />
       <Sidebar variant="inset" collapsible="icon" className="brand-sidebar">
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2 py-1 ">
-            <Image src="/image.png" alt="Mind Mesh" width={32} height={32} />
-            <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden text-primary font-bold text-xl">Mesh Mind</span>
-          </div>
+        <div className="flex items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <Image
+            src="/image.png"
+            alt="Mind Mesh"
+            width={32}
+            height={32}
+          />
+          <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden text-primary font-bold text-xl">
+            Mesh Mind
+          </span>
+        </div>
           <Link 
             href="/chat"
             className="btn-new-chat group-data-[collapsible=icon]:justify-center"
