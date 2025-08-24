@@ -556,10 +556,11 @@ export function ModelPicker({
                     >
                       {slotModel ? (
                         <div
-                          className="model-card model-card-wide p-2"
+                          className="model-card model-card-wide p-2 cursor-pointer"
                           draggable
                           onDragStart={(e) => onCardDragStart(e, slotModel.id)}
                           onDragEnd={onDragEnd}
+                          onClick={() => handleMultiModelToggle(slotModel.id)}
                         >
                           <div className="flex items-center gap-3 lg:hidden">
                             {renderLogo(slotModel.id, slotModel.provider)}
