@@ -10,8 +10,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Bot } from "lucide-react";
-import { getModelLogo, getProviderLogo, ModelId } from "@/convex/agent";
+import { ChevronDown, Bot, Paperclip, Brain } from "lucide-react";
+import { getModelLogo, getProviderLogo } from "@/convex/agent";
+import type { ModelId } from "@/convex/agent";
 // no search input
 
 interface ModelPickerProps {
@@ -85,14 +86,15 @@ export function ModelPicker({
     if (latestUserMessageId) return;
     if (!latestMultiRun) return;
     const master = (latestMultiRun.masterModelId as string) || multiSelectState.master;
-    const secondaries = latestMultiRun.allRuns
-      .filter(r => !r.isMaster)
-      .map(r => r.modelId as string);
+    type RunInfo = { isMaster: boolean; modelId: string };
+    const secondaries = (latestMultiRun.allRuns as Array<RunInfo>)
+      .filter((r) => !r.isMaster)
+      .map((r) => r.modelId as string);
     const nextState = { master, secondary: secondaries };
     const hasDiff =
       multiSelectState.master !== nextState.master ||
       multiSelectState.secondary.length !== nextState.secondary.length ||
-      nextState.secondary.some(id => !multiSelectState.secondary.includes(id));
+      nextState.secondary.some((id: string) => !multiSelectState.secondary.includes(id));
     if (hasDiff) {
       setMultiSelectState(nextState);
       onMultiModelChange?.(nextState);
@@ -107,14 +109,15 @@ export function ModelPicker({
     if (!latestUserMessageId) return;
     if (latestMessageRun) {
       const master = latestMessageRun.masterModelId as string;
-      const secondaries = latestMessageRun.allRuns
-        .filter(r => !r.isMaster)
-        .map(r => r.modelId as string);
+      type RunInfo = { isMaster: boolean; modelId: string };
+      const secondaries = (latestMessageRun.allRuns as Array<RunInfo>)
+        .filter((r) => !r.isMaster)
+        .map((r) => r.modelId as string);
       const nextState = { master, secondary: secondaries };
       const hasDiff =
         multiSelectState.master !== nextState.master ||
         multiSelectState.secondary.length !== nextState.secondary.length ||
-        nextState.secondary.some(id => !multiSelectState.secondary.includes(id));
+        nextState.secondary.some((id: string) => !multiSelectState.secondary.includes(id));
       if (hasDiff) {
         setMultiSelectState(nextState);
         onMultiModelChange?.(nextState);
@@ -270,29 +273,43 @@ export function ModelPicker({
                           role="option"
                         >
                           <div className="flex items-center gap-3">
-                            {renderLogo(model.id, model.provider)}
+                            <div className="flex items-center gap-2">
+                              {isPrimary && (
+                                <span className="badge-primary" aria-label="Primary model">Primary</span>
+                              )}
+                              {!isPrimary && isSecondary && (
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
+                                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
+                                  className="badge-set-primary"
+                                  aria-label={`Set ${model.displayName} as primary`}
+                                >
+                                  Set Primary
+                                </span>
+                              )}
+                              {renderLogo(model.id, model.provider)}
+                              <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+                            </div>
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+                              <div className="flex flex-col items-end justify-end gap-2">
+                                {model.fileSupport && (
+                                  <span className="badge-file" aria-label="Supports files">
+                                    <Paperclip className="h-3 w-3" />
+                                    Files
+                                  </span>
+                                )}
+                                {model.reasoning && (
+                                  <span className="badge-file" aria-label="Supports reasoning">
+                                    <Brain className="h-3 w-3" />
+                                    Reasoning
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
-                          {isPrimary && (
-                            <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-[11px] shadow">
-                               Primary
-                            </span>
-                          )}
                         </button>
-                        {isSecondary && !isPrimary && (
-                          <button
-                            type="button"
-                            onClick={() => handleMasterChange(model.id)}
-                            className="absolute bottom-3 right-3 rounded-md bg-background border border-border px-2.5 py-1 text-[11px] shadow transition-opacity cursor-pointer opacity-100"
-                            aria-label={`Set ${model.displayName} as primary`}
-                          >
-                            Set Primary
-                          </button>
-                        )}
                       </div>
                     );
                   })}
@@ -325,30 +342,43 @@ export function ModelPicker({
                             role="option"
                           >
                             <div className="flex items-center gap-3">
-                              {renderLogo(model.id, model.provider)}
+                              <div className="flex items-center gap-2">
+                                {isPrimary && (
+                                  <span className="badge-primary" aria-label="Primary model">Primary</span>
+                                )}
+                                {!isPrimary && isSecondary && (
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => { e.stopPropagation(); handleMasterChange(model.id); }}
+                                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); handleMasterChange(model.id); } }}
+                                    className="badge-set-primary"
+                                    aria-label={`Set ${model.displayName} as primary`}
+                                  >
+                                    Set Primary
+                                  </span>
+                                )}
+                                {renderLogo(model.id, model.provider)}
+                                <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+                              </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium text-sm sm:text-base truncate">{model.displayName}</span>
+                                <div className="flex flex-col items-end justify-end gap-2">
+                                  {model.fileSupport && (
+                                    <span className="badge-file" aria-label="Supports files">
+                                      <Paperclip className="h-3 w-3" />
+                                      Files
+                                    </span>
+                                  )}
+                                  {model.reasoning && (
+                                    <span className="badge-file" aria-label="Supports reasoning">
+                                      <Brain className="h-3 w-3" />
+                                      Reasoning
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            {isPrimary && (
-                              <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-[11px] shadow">
-                               Primary
-                              </span>
-                            )}
                           </button>
-
-                          {isSecondary && !isPrimary && (
-                            <button
-                              type="button"
-                              onClick={() => handleMasterChange(model.id)}
-                              className="absolute bottom-3 right-3 rounded-md bg-background border border-border px-2.5 py-1 text-[11px] shadow transition-opacity cursor-pointer opacity-100"
-                              aria-label={`Set ${model.displayName} as primary`}
-                            >
-                              Set Primary
-                            </button>
-                          )}
                         </div>
                       );
                     })}

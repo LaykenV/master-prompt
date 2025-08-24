@@ -33,6 +33,7 @@ interface MessageInputWithAttachmentsProps extends MessageInputBaseProps {
   files: File[] | null
   setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
   getFileUploadStatus?: (file: File) => { uploading: boolean }
+  attachmentsEnabled?: boolean
 }
 
 type MessageInputProps = (
@@ -130,6 +131,9 @@ export function MessageInput({
 
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
+      if ("attachmentsEnabled" in props && props.attachmentsEnabled === false) {
+        return
+      }
       const incoming = files ?? []
       const validated: Array<File> = []
       for (const f of incoming) {
@@ -160,20 +164,20 @@ export function MessageInput({
   }
 
   const onDragOver = (event: React.DragEvent) => {
-    if (props.allowAttachments !== true) return
+    if (props.allowAttachments !== true || ("attachmentsEnabled" in props && props.attachmentsEnabled === false)) return
     event.preventDefault()
     setIsDragging(true)
   }
 
   const onDragLeave = (event: React.DragEvent) => {
-    if (props.allowAttachments !== true) return
+    if (props.allowAttachments !== true || ("attachmentsEnabled" in props && props.attachmentsEnabled === false)) return
     event.preventDefault()
     setIsDragging(false)
   }
 
   const onDrop = (event: React.DragEvent) => {
     setIsDragging(false)
-    if (props.allowAttachments !== true) return
+    if (props.allowAttachments !== true || ("attachmentsEnabled" in props && props.attachmentsEnabled === false)) return
     event.preventDefault()
     const dataTransfer = event.dataTransfer
     if (dataTransfer.files.length) {
@@ -189,7 +193,7 @@ export function MessageInput({
       .map((item) => item.getAsFile())
       .filter((file) => file !== null)
 
-    if (props.allowAttachments && files.length > 0) {
+    if (props.allowAttachments && files.length > 0 && (!("attachmentsEnabled" in props) || props.attachmentsEnabled !== false)) {
       addFiles(files)
     }
   }
@@ -235,7 +239,7 @@ export function MessageInput({
     props.allowAttachments
       ? (() => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { allowAttachments, files, setFiles, getFileUploadStatus, ...rest } = props
+          const { allowAttachments, files, setFiles, getFileUploadStatus, attachmentsEnabled, ...rest } = props
           return rest
         })()
       : (() => {
@@ -416,6 +420,7 @@ export function MessageInput({
                     const files = await showFileUploadDialog()
                     addFiles(files)
                   }}
+                  disabled={("attachmentsEnabled" in props) && props.attachmentsEnabled === false}
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>

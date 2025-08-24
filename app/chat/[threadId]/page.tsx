@@ -8,12 +8,15 @@ import { useThreadMessages, optimisticallySendMessage, toUIMessages } from "@con
 import { ChatMessages, type ChatMessagesHandle } from "@/components/ChatMessages";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
+import { toast } from "sonner";
 
 export default function ThreadPage() {
   const params = useParams();
 
   const threadId = String((params as { threadId: string }).threadId);
   const user = useQuery(api.chat.getUser);
+  const threadModel = useQuery(api.chat.getThreadModel, { threadId });
+  const availableModels = useQuery(api.chat.getAvailableModels);
   const sendMessage = useMutation(api.chat.sendMessage).withOptimisticUpdate(
     optimisticallySendMessage(api.chat.listThreadMessages)
   );
@@ -95,6 +98,9 @@ export default function ThreadPage() {
           fileData,
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
+          modelId: (multiModelSelection.secondary.length > 0
+            ? multiModelSelection.master
+            : (selectedModel || threadModel || "gpt-5")) as ModelId,
         });
         return result.fileId;
       }
@@ -110,6 +116,9 @@ export default function ThreadPage() {
         storageId,
         fileName: file.name,
         mimeType: file.type || "application/octet-stream",
+        modelId: (multiModelSelection.secondary.length > 0
+          ? multiModelSelection.master
+          : (selectedModel || threadModel || "gpt-5")) as ModelId,
       });
       return fileId;
     })();
@@ -126,7 +135,78 @@ export default function ThreadPage() {
       uploadTasksRef.current.delete(key);
     });
     return task;
-  }, [fileKey, uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT]);
+  }, [fileKey, uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT, selectedModel, threadModel, multiModelSelection.master, multiModelSelection.secondary.length]);
+  const fileSupportById = React.useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const m of availableModels ?? []) map.set(m.id, m.fileSupport);
+    return map;
+  }, [availableModels]);
+
+  const modelSupportsFiles = React.useCallback((modelId: string | undefined) => {
+    if (!modelId) return true;
+    const v = fileSupportById.get(modelId);
+    return v === undefined ? true : v;
+  }, [fileSupportById]);
+
+  // Deduplicate rapid toasts when clearing attachments
+  const clearToastGuardRef = React.useRef(0);
+
+  const clearFilesWithToastOnce = React.useCallback((message: string) => {
+    if (!files || files.length === 0) return;
+    const now = Date.now();
+    if (now - clearToastGuardRef.current > 500) {
+      clearToastGuardRef.current = now;
+      toast.warning(message);
+    }
+    setFiles(null);
+  }, [files]);
+
+  const allSelectedModelsSupportFiles = React.useCallback((models: { master: string; secondary: string[] }) => {
+    if (!modelSupportsFiles(models.master)) return false;
+    for (const id of models.secondary) {
+      if (!modelSupportsFiles(id)) return false;
+    }
+    return true;
+  }, [modelSupportsFiles]);
+
+  const onModelChangeWrapped = React.useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+    // Only enforce for single-model mode; multi-model logic handled in onMultiModelChange
+    if (multiModelSelection.secondary.length === 0 && !modelSupportsFiles(modelId)) {
+      clearFilesWithToastOnce("Attachments removed: selected model does not support files.");
+    }
+  }, [modelSupportsFiles, multiModelSelection.secondary.length, clearFilesWithToastOnce]);
+
+  const onMultiModelChangeWrapped = React.useCallback((models: { master: string; secondary: string[] }) => {
+    setMultiModelSelection(models);
+    if (!allSelectedModelsSupportFiles(models)) {
+      clearFilesWithToastOnce("Attachments removed: one or more selected models do not support files.");
+    }
+  }, [allSelectedModelsSupportFiles, clearFilesWithToastOnce]);
+
+  const attachmentsEnabled = React.useMemo(() => {
+    if (multiModelSelection.secondary.length > 0) {
+      return allSelectedModelsSupportFiles(multiModelSelection);
+    }
+    const active = (selectedModel || threadModel);
+    return modelSupportsFiles(active);
+  }, [multiModelSelection, selectedModel, threadModel, modelSupportsFiles, allSelectedModelsSupportFiles]);
+
+  const getFileUploadStatus = React.useCallback((file: File) => {
+    const key = fileKey(file);
+    return { uploading: !!uploadingMap[key] };
+  }, [fileKey, uploadingMap]);
+
+  const attachmentsProps = React.useMemo(() => {
+    return {
+      allowAttachments: true as const,
+      attachmentsEnabled,
+      files,
+      setFiles,
+      getFileUploadStatus,
+    };
+  }, [attachmentsEnabled, files, setFiles, getFileUploadStatus]);
+
 
   // Kick off uploads as soon as files are attached
   React.useEffect(() => {
@@ -136,10 +216,7 @@ export default function ThreadPage() {
     }
   }, [files, ensureUploadTask]);
 
-  const getFileUploadStatus = React.useCallback((file: File) => {
-    const key = fileKey(file);
-    return { uploading: !!uploadingMap[key] };
-  }, [fileKey, uploadingMap]);
+  
 
   // Determine the latest user message id in this thread to drive model picker hydration logic
   const latestUserMessageId = React.useMemo(() => {
@@ -214,18 +291,15 @@ export default function ThreadPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              allowAttachments={true}
-              files={files}
-              setFiles={setFiles}
-              getFileUploadStatus={getFileUploadStatus}
+              {...attachmentsProps}
               isGenerating={isSending}
               disabled={!user}
               className="min-h-[60px]"
               modelPicker={{
                 threadId,
                 selectedModel,
-                onModelChange: setSelectedModel,
-                onMultiModelChange: setMultiModelSelection,
+                onModelChange: onModelChangeWrapped,
+                onMultiModelChange: onMultiModelChangeWrapped,
                 latestUserMessageId,
               }}
             />

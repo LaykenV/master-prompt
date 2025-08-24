@@ -8,25 +8,39 @@
 //name logo
 //add other models openrouter anthropic
 //auto scroll and fonts, sending msg should scroll
-file support?
+//file support oss?
+//update icon
+//file support ui
+//grok
+//think badge
 //thread title call
 //light mode selected thread color
 //add copy to all messages
 
-polar? how to handle subs and token tracking?
+review code for commit
+max 3/4?
+drag selected models for primary
+remove getprovidericon modelsupportsfiles
+
+
+polar? how to handle subs and token tracking? how to price? subs?
+usage handling
+
 rate limiting?
 
-test everything
 
 settings page
 landing page
 new chat ui
 
-auth migration?
+auth migration? better auth? https://convex-better-auth.netlify.app/ or clerk
 
+routing? react router inside /chat?
 
+test everything
 
-routing?
+launch videos
+
 
 img gen?
 

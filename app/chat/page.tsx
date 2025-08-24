@@ -6,10 +6,12 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
+import { toast } from "sonner";
 
 export default function NewChatPage() {
   const router = useRouter();
   const user = useQuery(api.chat.getUser);
+  const availableModels = useQuery(api.chat.getAvailableModels);
   const createThread = useAction(api.chat.createThread);
   const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
   const generateUploadUrl = useMutation(api.chat.generateUploadUrl);
@@ -40,10 +42,16 @@ export default function NewChatPage() {
       setUploadingMap((prev) => ({ ...prev, [key]: true }));
       if (file.size <= SMALL_FILE_LIMIT) {
         const fileData = await file.arrayBuffer();
+        console.log("model id", (multiModelSelection.secondary.length > 0
+          ? multiModelSelection.master
+          : (selectedModel as string)) as ModelId);
         const result = await uploadFileSmall({
           fileData,
           fileName: file.name,
           mimeType: file.type || "application/octet-stream",
+          modelId: (multiModelSelection.secondary.length > 0
+            ? multiModelSelection.master
+            : (selectedModel as string)) as ModelId,
         });
         return result.fileId;
       }
@@ -59,6 +67,9 @@ export default function NewChatPage() {
         storageId,
         fileName: file.name,
         mimeType: file.type || "application/octet-stream",
+        modelId: (multiModelSelection.secondary.length > 0
+          ? multiModelSelection.master
+          : (selectedModel as string)) as ModelId,
       });
       return fileId;
     })();
@@ -73,7 +84,78 @@ export default function NewChatPage() {
       uploadTasksRef.current.delete(key);
     });
     return task;
-  }, [uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT]);
+  }, [uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT, multiModelSelection.master, multiModelSelection.secondary.length, selectedModel]);
+  const fileSupportById = React.useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const m of availableModels ?? []) map.set(m.id, m.fileSupport);
+    return map;
+  }, [availableModels]);
+
+  const modelSupportsFiles = React.useCallback((modelId: string | undefined) => {
+    if (!modelId) return true;
+    const v = fileSupportById.get(modelId);
+    return v === undefined ? true : v;
+  }, [fileSupportById]);
+
+  // Deduplicate rapid toasts when clearing attachments
+  const clearToastGuardRef = React.useRef(0);
+
+  const clearFilesWithToastOnce = React.useCallback((message: string) => {
+    if (!files || files.length === 0) return;
+    const now = Date.now();
+    if (now - clearToastGuardRef.current > 500) {
+      clearToastGuardRef.current = now;
+      toast.warning(message);
+    }
+    setFiles(null);
+  }, [files]);
+
+  const handleModelChange = React.useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+    // Only enforce for single-model mode; multi-model logic handled in onMultiModelChange
+    if (multiModelSelection.secondary.length === 0 && !modelSupportsFiles(modelId)) {
+      clearFilesWithToastOnce("Attachments removed: selected model does not support files.");
+    }
+  }, [modelSupportsFiles, multiModelSelection.secondary.length, clearFilesWithToastOnce]);
+
+  const allSelectedModelsSupportFiles = React.useCallback((models: { master: string; secondary: string[] }) => {
+    if (!modelSupportsFiles(models.master)) return false;
+    for (const id of models.secondary) {
+      if (!modelSupportsFiles(id)) return false;
+    }
+    return true;
+  }, [modelSupportsFiles]);
+
+  const handleMultiModelChange = React.useCallback((models: { master: string; secondary: string[] }) => {
+    setMultiModelSelection(models);
+    if (!allSelectedModelsSupportFiles(models)) {
+      clearFilesWithToastOnce("Attachments removed: one or more selected models do not support files.");
+    }
+  }, [allSelectedModelsSupportFiles, clearFilesWithToastOnce]);
+
+  const attachmentsEnabled = React.useMemo(() => {
+    if (multiModelSelection.secondary.length > 0) {
+      return allSelectedModelsSupportFiles(multiModelSelection);
+    }
+    const active = selectedModel;
+    return modelSupportsFiles(active);
+  }, [multiModelSelection, selectedModel, modelSupportsFiles, allSelectedModelsSupportFiles]);
+
+  const getFileUploadStatus = React.useCallback((file: File) => {
+    const key = fileKey(file);
+    return { uploading: !!uploadingMap[key] };
+  }, [uploadingMap]);
+
+  const attachmentsProps = React.useMemo(() => {
+    return {
+      allowAttachments: true as const,
+      attachmentsEnabled,
+      files,
+      setFiles,
+      getFileUploadStatus,
+    };
+  }, [attachmentsEnabled, files, setFiles, getFileUploadStatus]);
+
 
   // Kick off uploads as soon as files are attached
   React.useEffect(() => {
@@ -83,10 +165,7 @@ export default function NewChatPage() {
     }
   }, [files, ensureUploadTask]);
 
-  const getFileUploadStatus = React.useCallback((file: File) => {
-    const key = fileKey(file);
-    return { uploading: !!uploadingMap[key] };
-  }, [uploadingMap]);
+  
 
   const onStart = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -211,17 +290,14 @@ export default function NewChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Start a new chat..."
-              allowAttachments={true}
-              files={files}
-              setFiles={setFiles}
-              getFileUploadStatus={getFileUploadStatus}
+              {...attachmentsProps}
               isGenerating={isCreating}
               disabled={!user}
               className="min-h-[60px]"
               modelPicker={{
                 selectedModel,
-                onModelChange: setSelectedModel,
-                onMultiModelChange: setMultiModelSelection,
+                onModelChange: handleModelChange,
+                onMultiModelChange: handleMultiModelChange,
               }}
             />
           </form>

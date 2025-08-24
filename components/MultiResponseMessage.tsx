@@ -258,7 +258,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                     duration={4.5}
                     delay={0}
                     showNodes
-                    nodeRadius={3.5}
+                    nodeRadius={2.5}
                     glow
                     glowOpacity={0.25}
                     revealProgress={revealProgressRef.current[`i:${fromRun.threadId}->${toRun.threadId}`] ?? 0}
@@ -285,7 +285,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                   duration={4.5}
                   delay={0.1}
                   showNodes
-                  nodeRadius={3.5}
+                  nodeRadius={2.5}
                   glow
                   glowOpacity={0.28}
                   revealProgress={revealProgressRef.current[`f:${run.threadId}`] ?? 0}

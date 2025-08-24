@@ -34,11 +34,17 @@ export const registerUploadedFile = action({
         fileName: v.string(),
         mimeType: v.string(),
         sha256: v.optional(v.string()),
+        modelId: MODEL_ID_SCHEMA,
     },
     returns: v.object({ fileId: v.string(), url: v.string(), storageId: v.string() }),
-    handler: async (ctx, { storageId, fileName, sha256 }) => {
+    handler: async (ctx, { storageId, fileName, sha256, modelId }) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+
+        // Enforce model file support for uploads
+        if (!AVAILABLE_MODELS[modelId as ModelId].fileSupport) {
+            throw new Error("Selected model does not support file uploads");
+        }
 
         const blob = await ctx.storage.get(storageId);
         if (!blob) throw new Error("Uploaded file blob not found");
@@ -71,12 +77,16 @@ export const getAvailableModels = query({
         id: v.string(),
         displayName: v.string(),
         provider: v.string(),
+        fileSupport: v.boolean(),
+        reasoning: v.boolean(),
     })),
     handler: async () => {
         return Object.entries(AVAILABLE_MODELS).map(([id, config]) => ({
             id,
             displayName: config.displayName,
             provider: config.provider,
+            fileSupport: config.fileSupport,
+            reasoning: config.reasoning,
         }));
     },
 });
@@ -194,6 +204,12 @@ export const saveInitialMessage = internalMutation({
     },
     returns: v.null(),
     handler: async (ctx, { threadId, userId, prompt, modelId, fileIds }) => {
+        // Validate file support for selected model
+        if (fileIds && fileIds.length > 0) {
+            if (!AVAILABLE_MODELS[modelId as ModelId].fileSupport) {
+                throw new Error("Selected model does not support file attachments");
+            }
+        }
         // Build message content with files if provided
         if (fileIds && fileIds.length > 0) {
             const messageContent = [];
@@ -268,6 +284,13 @@ export const sendMessage = mutation({
         
         // Get the model to use (provided or current thread model)
         const activeModelId = modelId || await ctx.runQuery(internal.chat.getThreadModelInternal, { threadId });
+
+        // Validate file support for selected/active model
+        if (fileIds && fileIds.length > 0) {
+            if (!AVAILABLE_MODELS[activeModelId as ModelId].fileSupport) {
+                throw new Error("Selected model does not support file attachments");
+            }
+        }
         
         // Build message content with files if provided
         if (fileIds && fileIds.length > 0) {
@@ -431,6 +454,13 @@ export const startMultiModelGeneration = action({
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+
+        // Validate file support for master model if files are attached
+        if (fileIds && fileIds.length > 0) {
+            if (!AVAILABLE_MODELS[masterModelId as ModelId].fileSupport) {
+                throw new Error("Selected master model does not support file attachments");
+            }
+        }
 
         // Save the user's initial message to the master thread with files if provided
         let messageId: string;
@@ -636,15 +666,21 @@ export const uploadFile = action({
         fileName: v.string(),
         mimeType: v.string(),
         sha256: v.optional(v.string()),
+        modelId: MODEL_ID_SCHEMA,
     },
     returns: v.object({
         fileId: v.string(),
         url: v.string(),
         storageId: v.string(),
     }),
-    handler: async (ctx, { fileData, fileName, mimeType, sha256 }) => {
+    handler: async (ctx, { fileData, fileName, mimeType, sha256, modelId }) => {
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+        
+        // Enforce model file support for uploads
+        if (!AVAILABLE_MODELS[modelId as ModelId].fileSupport) {
+            throw new Error("Selected model does not support file uploads");
+        }
         
         // fileData is already an ArrayBuffer (v.bytes() maps to ArrayBuffer in Convex)
         const blob = new Blob([fileData], { type: mimeType });

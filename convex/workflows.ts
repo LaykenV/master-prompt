@@ -212,6 +212,12 @@ export const generateModelResponse = internalAction({
   returns: v.string(),
   handler: async (ctx, { threadId, modelId, prompt, userId, fileIds, masterMessageId }) => {
     try {
+      // Enforce file support for this model
+      if (fileIds && fileIds.length > 0) {
+        if (!AVAILABLE_MODELS[modelId as ModelId].fileSupport) {
+          throw new Error("Selected model does not support file attachments");
+        }
+      }
       // For ALL models (including master), save the initial prompt message to their sub-thread
       let messageId: string;
       if (fileIds && fileIds.length > 0) {

@@ -5,62 +5,79 @@ import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { v } from "convex/values";
 import { groq } from "@ai-sdk/groq";
+import { xai } from "@ai-sdk/xai";
 
 // Available models configuration
 export const AVAILABLE_MODELS = {
   "gemini-2.5-flash": {
     provider: "google",
     displayName: "Gemini 2.5 Flash",
-    icon: "🔮",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => google("gemini-2.5-flash"),
   },
   "gemini-2.5-pro": {
     provider: "google",
     displayName: "Gemini 2.5 Pro",
-    icon: "🔮",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => google("gemini-2.5-pro"),
   },
   "gpt-5": {
     provider: "openai",
     displayName: "GPT-5",
-    icon: "🤖",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => openai.chat("gpt-5"),
   },
   "gpt-5-mini": {
     provider: "openai",
     displayName: "GPT-5 Mini",
-    icon: "🤖",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => openai.chat("gpt-5-mini"),
   },
   "gpt-5-nano": {
     provider: "openai",
     displayName: "GPT-5 Nano",
-    icon: "🤖",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => openai.chat("gpt-5-nano"),
   },
   "claude-4-sonnet": {
     provider: "anthropic",
     displayName: "Claude 4 Sonnet",
-    icon: "🤖",
+    fileSupport: true,
+    reasoning: true,
     chatModel: () => anthropic("claude-sonnet-4-20250514"),
   },
   "gpt-oss-120b": {
     provider: "Open Source",
     displayName: "GPT OSS 120B",
-    icon: "🤖",
+    fileSupport: false,
+    reasoning: false,
     chatModel: () => groq("openai/gpt-oss-120b"),
   },
   "gpt-oss-20b": {
     provider: "Open Source",
     displayName: "GPT OSS 20B",
-    icon: "🤖",
+    fileSupport: false,
+    reasoning: false,
     chatModel: () => groq("openai/gpt-oss-20b"),
   },
   "llama-3.3-70b": {
     provider: "Open Source",
     displayName: "Llama 3.3 70B",
-    icon: "🤖",
+    fileSupport: false,
+    reasoning: false,
     chatModel: () => groq("llama-3.3-70b-versatile"),
+  },
+  "Grok-4": {
+    provider: "xAI",
+    displayName: "Grok-4",
+    fileSupport: false,
+    reasoning: true,
+    chatModel: () => xai("grok-4"),
   },
 } as const;
 
@@ -76,17 +93,13 @@ export const MODEL_ID_SCHEMA = v.union(
   v.literal("claude-4-sonnet"),
   v.literal("gpt-oss-120b"),
   v.literal("gpt-oss-20b"),
-  v.literal("llama-3.3-70b")
+  v.literal("llama-3.3-70b"),
+  v.literal("Grok-4")
 );
 
 // Helper function to get chat model by ID
 export function getChatModel(modelId: ModelId) {
   return AVAILABLE_MODELS[modelId].chatModel();
-}
-
-// Helper function to get model icon by ID
-export function getModelIcon(modelId: ModelId) {
-  return AVAILABLE_MODELS[modelId].icon;
 }
 
 // Helper function to get provider icon by provider name (for backward compatibility)
@@ -126,12 +139,23 @@ const PROVIDER_LOGOS: Record<string, ThemedLogo> = {
     dark: "/icons8-meta-50-dark.svg",
     alt: "Open Source",
   },
+  xAI: {
+    light: "/xai.svg",
+    dark: "/xai.webp",
+    alt: "xAI",
+  },
 };
 
 export function getProviderLogo(provider: string): ThemedLogo {
   const logo = PROVIDER_LOGOS[provider];
   if (!logo) return { light: "/convex.svg", dark: "/convex.svg", alt: provider || "Model" };
   return logo;
+}
+
+// Back-compat: derive a simple emoji icon from provider
+export function getModelIcon(modelId: ModelId) {
+  const provider = AVAILABLE_MODELS[modelId].provider;
+  return getProviderIcon(provider);
 }
 
 export function getModelLogo(modelId: ModelId): ThemedLogo {
@@ -182,4 +206,9 @@ export const summaryAgent = new Agent(components.agent, {
         console.log(`Model: ${model}, Usage:`, usage);
     },
 });
+
+// Shared helper for clients to check if files are supported by a model
+export function modelSupportsFiles(modelId: ModelId): boolean {
+  return AVAILABLE_MODELS[modelId].fileSupport;
+}
 

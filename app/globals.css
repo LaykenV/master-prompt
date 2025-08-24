@@ -325,6 +325,43 @@
   .model-card-wide {
     @apply p-4;
   }
+  /* File support badge */
+  .badge-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid hsl(var(--primary) / 0.35);
+    background:
+      linear-gradient(
+        180deg,
+        hsl(var(--primary) / 0.18) 0%,
+        hsl(var(--primary) / 0.10) 100%
+      ),
+      hsl(var(--card));
+    color: hsl(var(--foreground));
+    font-size: 0.70rem;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow:
+      0 10px 24px -14px hsl(var(--primary) / 0.28),
+      0 4px 10px -6px hsl(var(--foreground) / 0.10),
+      inset 0 1px 0 hsl(var(--primary) / 0.12);
+  }
+  .badge-file svg {
+    filter: drop-shadow(0 1px 0 hsl(var(--foreground) / 0.15));
+  }
+  /* Primary badges inline with model name - keep original colors */
+  .badge-primary {
+    @apply inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-[11px] shadow;
+    white-space: nowrap;
+  }
+
+  .badge-set-primary {
+    @apply inline-flex items-center gap-1 rounded-md bg-background border border-border px-2.5 py-1 text-[11px] shadow cursor-pointer;
+    white-space: nowrap;
+  }
   /* Subtle gradients for sidebar and chat surfaces */
   .brand-sidebar [data-slot="sidebar-inner"],
   .pink-sidebar [data-slot="sidebar-inner"] {
