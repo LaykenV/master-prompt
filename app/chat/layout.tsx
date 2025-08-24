@@ -295,12 +295,17 @@ function ThreadItem({
         tooltip={displayName}
       >
         <Link href={`/chat/${thread._id}`} className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          <span className="truncate flex-1">
+          {/* Show loading spinner when collapsed and loading, otherwise show chat icon */}
+          <MessageSquare className={`h-4 w-4 ${isLoading ? 'group-data-[collapsible=icon]:hidden' : ''}`} />
+          {isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground hidden group-data-[collapsible=icon]:block" />
+          )}
+          <span className="truncate flex-1 group-data-[collapsible=icon]:hidden">
             {displayName}
           </span>
+          {/* Show loading spinner in expanded mode */}
           {isLoading && (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto absolute right-2" />
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-auto group-data-[collapsible=icon]:hidden" />
           )}
         </Link>
       </SidebarMenuButton>
