@@ -79,12 +79,16 @@ export default function ThreadPage() {
   // -------- Pre-upload files to minimize send-time latency --------
   const SMALL_FILE_LIMIT = 800 * 1024; // ~0.8MB safe under Convex v.bytes limits
   const uploadTasksRef = React.useRef(new Map<string, Promise<string>>());
+  const completedUploadsRef = React.useRef(new Map<string, string>());
   const [uploadingMap, setUploadingMap] = React.useState<Record<string, boolean>>({});
 
   const fileKey = React.useCallback((file: File) => `${file.name}:${file.size}:${file.lastModified}`, []);
 
   const ensureUploadTask = React.useCallback((file: File): Promise<string> => {
     const key = fileKey(file);
+    // If this file has already been uploaded, return the cached id
+    const completed = completedUploadsRef.current.get(key);
+    if (completed) return Promise.resolve(completed);
     const existing = uploadTasksRef.current.get(key);
     if (existing) return existing;
 
@@ -124,16 +128,22 @@ export default function ThreadPage() {
     })();
 
     uploadTasksRef.current.set(key, task);
-    // clear uploading indicator when done
-    task.finally(() => {
-      setUploadingMap((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
+    // cache completion and clear uploading indicator when done
+    task
+      .then((fileId) => {
+        try {
+          completedUploadsRef.current.set(key, fileId);
+        } catch {}
+      })
+      .finally(() => {
+        setUploadingMap((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        // optional: free the ref entry
+        uploadTasksRef.current.delete(key);
       });
-      // optional: free the ref entry
-      uploadTasksRef.current.delete(key);
-    });
     return task;
   }, [fileKey, uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT, selectedModel, threadModel, multiModelSelection.master, multiModelSelection.secondary.length]);
   const fileSupportById = React.useMemo(() => {

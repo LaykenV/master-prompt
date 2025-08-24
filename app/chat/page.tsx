@@ -30,11 +30,15 @@ export default function NewChatPage() {
   // -------- Pre-upload files to minimize send-time latency --------
   const SMALL_FILE_LIMIT = 800 * 1024; // ~0.8MB safe under Convex v.bytes limits
   const uploadTasksRef = React.useRef(new Map<string, Promise<string>>());
+  const completedUploadsRef = React.useRef(new Map<string, string>());
   const [uploadingMap, setUploadingMap] = React.useState<Record<string, boolean>>({});
   const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`;
 
   const ensureUploadTask = React.useCallback((file: File): Promise<string> => {
     const key = fileKey(file);
+    // If this file has already been uploaded, avoid re-upload and loading states
+    const completed = completedUploadsRef.current.get(key);
+    if (completed) return Promise.resolve(completed);
     const existing = uploadTasksRef.current.get(key);
     if (existing) return existing;
 
@@ -75,14 +79,20 @@ export default function NewChatPage() {
     })();
 
     uploadTasksRef.current.set(key, task);
-    task.finally(() => {
-      setUploadingMap((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
+    task
+      .then((fileId) => {
+        try {
+          completedUploadsRef.current.set(key, fileId);
+        } catch {}
+      })
+      .finally(() => {
+        setUploadingMap((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        uploadTasksRef.current.delete(key);
       });
-      uploadTasksRef.current.delete(key);
-    });
     return task;
   }, [uploadFileSmall, generateUploadUrl, registerUploadedFile, SMALL_FILE_LIMIT, multiModelSelection.master, multiModelSelection.secondary.length, selectedModel]);
   const fileSupportById = React.useMemo(() => {

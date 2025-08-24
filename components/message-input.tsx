@@ -488,10 +488,22 @@ function FileUploadOverlay({ isDragging }: FileUploadOverlayProps) {
 
 function showFileUploadDialog() {
   const input = document.createElement("input")
+      
+  const ACCEPT = [
+        "application/pdf",
+        "application/json",
+        "text/markdown",
+        "image/png",
+        "image/jpeg",
+        "image/gif",
+        "image/webp",
+        ".pdf", ".json", ".md", ".markdown", ".png", ".jpg", ".jpeg", ".gif", ".webp",
+  ].join(",");
+      
 
   input.type = "file"
   input.multiple = true
-  input.accept = "*/*"
+  input.accept = ACCEPT
   input.click()
 
   return new Promise<File[] | null>((resolve) => {

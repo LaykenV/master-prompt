@@ -473,7 +473,7 @@ export function ModelPicker({
                     setMultiSelectState(newState);
                     onMultiModelChange?.(newState);
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointert"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   Clear
                 </button>
@@ -483,7 +483,7 @@ export function ModelPicker({
                 onDragOver={(e) => onDragOverZone(e, { target: "master" })}
                 onDrop={onDropOnMaster}
                 onDragLeave={() => setDragOverTarget(null)}
-                className={`rounded-lg border p-3 mb-4 transition-colors ${
+                className={`rounded-lg border p-2 mb-4 transition-colors ${
                   dragOverTarget && dragOverTarget.target === "master" ? "border-primary/60" : "border-border"
                 }`}
                 aria-label="Master model drop zone"

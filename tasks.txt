@@ -22,8 +22,8 @@
 //drag selected models for primary
 
 
- fix logos on multi card
-remove getprovidericon modelsupportsfiles
+ //fix logos on multi card
+//remove getprovidericon modelsupportsfiles
 
 figure out subscription and usage
 
@@ -46,6 +46,9 @@ routing? react router inside /chat? local first?
 test everything
 
 launch videos
+
+
+add more toast errors
 
 
 img gen?
