@@ -99,6 +99,22 @@ export function ModelPicker({
   // dnd-kit state
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Draggable id helpers to disambiguate context (available/master/secondary)
+  const makeAvailableDragId = (modelId: string) => `available:${modelId}` as const;
+  const makeMasterDragId = (modelId: string) => `master:${modelId}` as const;
+  const makeSecondaryDragId = (slotIndex: number, modelId: string) => `secondary:${slotIndex}:${modelId}` as const;
+  const parseDragId = (
+    dragId: string,
+  ): { context: "available" | "master" | "secondary"; modelId: string; slotIndex?: number } => {
+    const [context, ...rest] = dragId.split(":");
+    if (context === "secondary") {
+      const [slotIndexStr, ...modelParts] = rest;
+      return { context: "secondary", slotIndex: Number(slotIndexStr), modelId: modelParts.join(":") };
+    }
+    const ctx = context === "available" || context === "master" ? context : "available";
+    return { context: ctx, modelId: rest.join(":") };
+  };
+
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: { delay: 200, tolerance: 8 },
@@ -269,20 +285,21 @@ export function ModelPicker({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const active = String(event.active.id);
+    const { modelId: activeModelId } = parseDragId(active);
     const overId = event.over?.id;
     setActiveId(null);
     if (!overId) return;
     const over = String(overId);
     if (over === "drop-master") {
-      if (active !== multiSelectState.master) {
-        handleMasterChange(active);
+      if (activeModelId !== multiSelectState.master) {
+        handleMasterChange(activeModelId);
       }
       return;
     }
     if (over.startsWith("drop-secondary-")) {
       const index = parseInt(over.split("-").pop() || "0", 10);
       if (!Number.isNaN(index)) {
-        dropOnSecondaryById(index, active);
+        dropOnSecondaryById(index, activeModelId);
       }
     }
   };
@@ -430,11 +447,12 @@ export function ModelPicker({
     disabled,
     selectedClass,
     onClick,
-  }: ModelCardBaseProps & { model: ModelInfo }) => {
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: model.id });
+    dragId,
+  }: ModelCardBaseProps & { model: ModelInfo; dragId: string }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: dragId });
     const refCallback = (node: HTMLElement | null) => {
       setNodeRef(node);
-      draggableRefs.current[model.id] = node;
+      draggableRefs.current[dragId] = node;
     };
     const style: React.CSSProperties = {
       transform: transform ? CSS.Transform.toString(transform) : undefined,
@@ -490,6 +508,7 @@ export function ModelPicker({
             disabled={false}
             selectedClass={"model-card-selected"}
             onClick={() => {}}
+            dragId={makeMasterDragId(modelInfo.id)}
           />
         ) : (
           <div className="p-4 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here to set as master</div>
@@ -517,6 +536,7 @@ export function ModelPicker({
             disabled={false}
             selectedClass={"model-card-selected"}
             onClick={() => onToggle(slotModel.id)}
+            dragId={makeSecondaryDragId(slotIndex, slotModel.id)}
           />
         ) : (
           <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
@@ -630,6 +650,7 @@ export function ModelPicker({
                                 disabled={disabled}
                                 selectedClass={selectedClass}
                                 onClick={() => !disabled && handleMultiModelToggle(model.id)}
+                                dragId={makeAvailableDragId(model.id)}
                               />
                             </div>
                           );
@@ -648,7 +669,8 @@ export function ModelPicker({
         <DragOverlay dropAnimation={null} style={{ zIndex: 99999 }}>
           {activeId ? (
             (() => {
-              const m = availableModels.find((mm) => mm.id === activeId);
+              const { modelId } = parseDragId(activeId);
+              const m = availableModels.find((mm) => mm.id === modelId);
               if (!m) return null;
               const model = m as ModelInfo;
               

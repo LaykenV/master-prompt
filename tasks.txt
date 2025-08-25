@@ -52,8 +52,8 @@ try polar again
 //selecting thread should close sidebar on mobile
 //zoom in on mobile
 
-drag and drop library
-polar?
+//drag and drop library
+stripe?
 
 rate limiting?
 
