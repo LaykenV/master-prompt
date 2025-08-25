@@ -4,6 +4,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +14,21 @@ import {
 import { ChevronDown, Bot, Paperclip, Brain } from "lucide-react";
 import { getModelLogo, getProviderLogo } from "@/convex/agent";
 import type { ModelId } from "@/convex/agent";
+import {
+  DndContext,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  DragOverlay,
+  closestCenter,
+  useDraggable,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 // no search input
 
 interface ModelPickerProps {
@@ -38,8 +54,28 @@ export function ModelPicker({
 }: ModelPickerProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const draggableRefs = useRef<Record<string, HTMLElement | null>>({});
   const { isAuthenticated } = useConvexAuth();
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    // Safari fallback
+    if (mq.addEventListener) {
+      mq.addEventListener("change", update);
+      return () => mq.removeEventListener("change", update);
+    } else if ('addListener' in mq && typeof mq.addListener === 'function') {
+      mq.addListener(update);
+      return () => {
+        if ('removeListener' in mq && typeof mq.removeListener === 'function') {
+          mq.removeListener(update);
+        }
+      };
+    }
+  }, []);
   const availableModels = useQuery(api.chat.getAvailableModels);
   const threadModel = useQuery(api.chat.getThreadModel, isAuthenticated && threadId ? { threadId } : "skip");
   const latestMultiRun = useQuery(
@@ -60,28 +96,18 @@ export function ModelPicker({
   // search removed per design
   const MAX_SECONDARIES = 2;
 
-  // Drag-and-drop state
-  type DragTarget = { target: "master" } | { target: "secondary"; index: number } | null;
-  const [draggingModelId, setDraggingModelId] = useState<string | null>(null);
-  const [dragOverTarget, setDragOverTarget] = useState<DragTarget>(null);
+  // dnd-kit state
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Touch long-press to pick + tap-to-drop (mobile fallback)
-  const [isTouchDragging, setIsTouchDragging] = useState(false);
-  const touchLongPressTimerRef = useRef<number | null>(null);
-  const touchMovedRef = useRef(false);
-
-  const clearTouchTimer = () => {
-    if (touchLongPressTimerRef.current) {
-      window.clearTimeout(touchLongPressTimerRef.current);
-      touchLongPressTimerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      clearTouchTimer();
-    };
-  }, []);
+  const sensors = useSensors(
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor)
+  );
 
   // Initialize client model from thread model
   useEffect(() => {
@@ -211,153 +237,9 @@ export function ModelPicker({
     onModelChange?.(modelId);
   };
 
-
-
-  // DnD handlers
-  const onCardDragStart = (e: React.DragEvent, modelId: string) => {
-    setDraggingModelId(modelId);
-    try {
-      e.dataTransfer.setData("text/plain", modelId);
-    } catch {}
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const onDragEnd = () => {
-    setDraggingModelId(null);
-    setDragOverTarget(null);
-  };
-
-  // Touch handlers for cards (long-press to pick, then tap zone to drop)
-  const TOUCH_LONG_PRESS_MS = 300;
-
-  const onCardTouchStart = (e: React.TouchEvent, modelId: string) => {
-    e.stopPropagation();
-    // Ignore if already dragging
-    if (isTouchDragging) return;
-    touchMovedRef.current = false;
-    clearTouchTimer();
-    touchLongPressTimerRef.current = window.setTimeout(() => {
-      setDraggingModelId(modelId);
-      setIsTouchDragging(true);
-    }, TOUCH_LONG_PRESS_MS);
-  };
-
-  const onCardTouchMove = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    // Mark movement to suppress click on touchend
-    if (touchLongPressTimerRef.current || isTouchDragging) {
-      touchMovedRef.current = true;
-      // Cancel pending long-press if user moves
-      if (touchLongPressTimerRef.current) clearTouchTimer();
-    }
-  };
-
-  const onCardTouchEnd = (e: React.TouchEvent, clickHandler: () => void) => {
-    // If long-press not yet fired and finger lifted, treat as regular tap
-    if (touchLongPressTimerRef.current) {
-      clearTouchTimer();
-      if (!touchMovedRef.current && !isTouchDragging) {
-        e.preventDefault();
-        e.stopPropagation();
-        clickHandler();
-      }
-      touchMovedRef.current = false;
-      return;
-    }
-    // If we are in drag mode, just prevent this tap from toggling
-    if (isTouchDragging) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    touchMovedRef.current = false;
-  };
-
-  const onDragOverZone = (e: React.DragEvent, target: DragTarget) => {
-    e.preventDefault();
-    setDragOverTarget(target);
-  };
-
-  const onDropOnMaster = (e: React.DragEvent) => {
-    e.preventDefault();
-    const id = (() => {
-      try {
-        return e.dataTransfer.getData("text/plain") || draggingModelId;
-      } catch {
-        return draggingModelId;
-      }
-    })();
-    if (!id) return;
-    if (id === multiSelectState.master) return;
-    handleMasterChange(id);
-    setDragOverTarget(null);
-    setDraggingModelId(null);
-    setIsTouchDragging(false);
-  };
-
-  const onDropOnSecondary = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    const id = (() => {
-      try {
-        return e.dataTransfer.getData("text/plain") || draggingModelId;
-      } catch {
-        return draggingModelId;
-      }
-    })();
-    if (!id) return;
-    if (id === multiSelectState.master) {
-      // Don't allow dropping the current master into secondary directly
-      setDragOverTarget(null);
-      setDraggingModelId(null);
-      setIsTouchDragging(false);
-      return;
-    }
-
-    const isAlreadySecondary = multiSelectState.secondary.includes(id);
-    const nextSecondary = [...multiSelectState.secondary];
-
-    if (isAlreadySecondary) {
-      // Reorder within secondary slots
-      const from = nextSecondary.indexOf(id);
-      if (from !== -1 && from !== index) {
-        nextSecondary.splice(from, 1);
-        nextSecondary.splice(index, 0, id);
-      }
-    } else {
-      // Insert into requested slot
-      if (nextSecondary.length < MAX_SECONDARIES) {
-        nextSecondary.splice(index, 0, id);
-      } else {
-        // Replace the target slot if full
-        nextSecondary[index] = id;
-      }
-    }
-
-    // Ensure uniqueness and cap
-    const unique = Array.from(new Set(nextSecondary)).slice(0, MAX_SECONDARIES);
-    const newState = { ...multiSelectState, secondary: unique };
-    setMultiSelectState(newState);
-    onMultiModelChange?.(newState);
-    setDragOverTarget(null);
-    setDraggingModelId(null);
-    setIsTouchDragging(false);
-  };
-
-  // Helpers to support tap-to-drop using current draggingModelId on touch
-  const dropOnMasterById = (id: string) => {
-    if (!id) return;
-    if (id === multiSelectState.master) return;
-    handleMasterChange(id);
-    setDragOverTarget(null);
-    setDraggingModelId(null);
-    setIsTouchDragging(false);
-  };
-
   const dropOnSecondaryById = (index: number, id: string) => {
     if (!id) return;
     if (id === multiSelectState.master) {
-      setDragOverTarget(null);
-      setDraggingModelId(null);
-      setIsTouchDragging(false);
       return;
     }
     const isAlreadySecondary = multiSelectState.secondary.includes(id);
@@ -379,9 +261,30 @@ export function ModelPicker({
     const newState = { ...multiSelectState, secondary: unique };
     setMultiSelectState(newState);
     onMultiModelChange?.(newState);
-    setDragOverTarget(null);
-    setDraggingModelId(null);
-    setIsTouchDragging(false);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const active = String(event.active.id);
+    const overId = event.over?.id;
+    setActiveId(null);
+    if (!overId) return;
+    const over = String(overId);
+    if (over === "drop-master") {
+      if (active !== multiSelectState.master) {
+        handleMasterChange(active);
+      }
+      return;
+    }
+    if (over.startsWith("drop-secondary-")) {
+      const index = parseInt(over.split("-").pop() || "0", 10);
+      if (!Number.isNaN(index)) {
+        dropOnSecondaryById(index, active);
+      }
+    }
   };
 
   if (!availableModels) {
@@ -426,8 +329,6 @@ export function ModelPicker({
     disabled: boolean;
     selectedClass: string;
     onClick: () => void;
-    onDragStart: (e: React.DragEvent) => void;
-    onDragEnd: () => void;
   }
 
   const ModelCardMobile = ({
@@ -437,31 +338,16 @@ export function ModelPicker({
     disabled,
     selectedClass,
     onClick,
-    onDragStart,
-    onDragEnd,
   }: ModelCardBaseProps) => {
     return (
       <button
         type="button"
-        onClick={(e) => {
-          if (isTouchDragging) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          onClick();
-        }}
+        onClick={onClick}
         className={`model-card model-card-wide w-full text-left p-3 ${
           disabled ? "cursor-default opacity-90" : "cursor-pointer"
         } ${selectedClass} lg:hidden`}
         aria-selected={isSelected}
         role="option"
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onTouchStart={(e) => onCardTouchStart(e, model.id)}
-        onTouchMove={onCardTouchMove}
-        onTouchEnd={(e) => onCardTouchEnd(e, onClick)}
       >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -499,8 +385,6 @@ export function ModelPicker({
     disabled,
     selectedClass,
     onClick,
-    onDragStart,
-    onDragEnd,
   }: ModelCardBaseProps) => {
     return (
       <button
@@ -511,9 +395,6 @@ export function ModelPicker({
         } ${selectedClass} hidden lg:block`}
         aria-selected={isSelected}
         role="option"
-        draggable
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
       >
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
@@ -542,43 +423,151 @@ export function ModelPicker({
     );
   };
 
+  const DraggableModelCard = ({
+    model,
+    isPrimary,
+    isSelected,
+    disabled,
+    selectedClass,
+    onClick,
+  }: ModelCardBaseProps & { model: ModelInfo }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: model.id });
+    const refCallback = (node: HTMLElement | null) => {
+      setNodeRef(node);
+      draggableRefs.current[model.id] = node;
+    };
+    const style: React.CSSProperties = {
+      transform: transform ? CSS.Transform.toString(transform) : undefined,
+      zIndex: isDragging ? 50 : undefined,
+      position: isDragging ? "relative" : undefined,
+      willChange: transform ? "transform" : undefined,
+      opacity: isDragging ? 0 : undefined,
+    };
+    return (
+      <div ref={refCallback} {...listeners} {...attributes} className="block" style={style}>
+        {isDesktop ? (
+          <ModelCardDesktop
+            model={model}
+            isPrimary={isPrimary}
+            isSelected={isSelected}
+            disabled={disabled}
+            selectedClass={selectedClass}
+            onClick={onClick}
+          />
+        ) : (
+          <ModelCardMobile
+            model={model}
+            isPrimary={isPrimary}
+            isSelected={isSelected}
+            disabled={disabled}
+            selectedClass={selectedClass}
+            onClick={onClick}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const MasterDropZone = ({ modelInfo }: { modelInfo: ModelInfo | undefined }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: "drop-master" });
+    return (
+      <div
+        ref={setNodeRef}
+        className={`rounded-lg border p-2 mb-4 transition-colors ${
+          isOver ? "border-primary/60" : "border-border"
+        }`}
+        aria-label="Master model drop zone"
+      >
+        <div className="text-xs font-medium mb-2 flex items-center gap-2">
+          <span className="badge-primary" aria-label="Primary model"></span>
+          <span className="text-muted-foreground">Master model</span>
+        </div>
+        {modelInfo ? (
+          <DraggableModelCard
+            model={modelInfo}
+            isPrimary={true}
+            isSelected={true}
+            disabled={false}
+            selectedClass={"model-card-selected"}
+            onClick={() => {}}
+          />
+        ) : (
+          <div className="p-4 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here to set as master</div>
+        )}
+      </div>
+    );
+  };
+
+  const SecondaryDropZone = ({
+    slotIndex,
+    slotModel,
+    onToggle,
+  }: { slotIndex: number; slotModel: ModelInfo | undefined; onToggle: (id: string) => void }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: `drop-secondary-${slotIndex}` });
+    return (
+      <div
+        ref={setNodeRef}
+        className={`rounded-lg border p-2 transition-colors ${isOver ? "border-primary/60" : "border-border"}`}
+      >
+        {slotModel ? (
+          <DraggableModelCard
+            model={slotModel}
+            isPrimary={false}
+            isSelected={true}
+            disabled={false}
+            selectedClass={"model-card-selected"}
+            onClick={() => onToggle(slotModel.id)}
+          />
+        ) : (
+          <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
+        )}
+      </div>
+    );
+  };
+
   // Unified single-button menu with master + optional secondary selection
   const totalSelected = 1 + multiSelectState.secondary.length;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={`flex items-center gap-2 surface-trigger ${className}`}
-        >
-          <span className="inline-flex items-center gap-2">
-            <span className="text-sm font-medium"> 
-              {masterModelInfo?.displayName || multiSelectState.master}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={`flex items-center gap-2 surface-trigger ${className}`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="text-sm font-medium"> 
+                {masterModelInfo?.displayName || multiSelectState.master}
+              </span>
             </span>
-          </span>
-          {secondaryInfos.length > 0 && (
-            <span className="ml-1 hidden sm:inline-flex items-center gap-1">
-              
-              {secondaryInfos.length > 3 && (
-                <span className="text-[10px] px-1 py-0.5 rounded bg-secondary text-secondary-foreground">
-                  +{secondaryInfos.length - 3}
-                </span>
-              )}
+            {secondaryInfos.length > 0 && (
+              <span className="ml-1 hidden sm:inline-flex items-center gap-1">
+                
+                {secondaryInfos.length > 3 && (
+                  <span className="text-[10px] px-1 py-0.5 rounded bg-secondary text-secondary-foreground">
+                    +{secondaryInfos.length - 3}
+                  </span>
+                )}
+              </span>
+            )}
+            {/* Compact selection label: number only on mobile, full text on larger screens */}
+            <span className="ml-1 text-[10px] font-medium text-muted-foreground inline sm:hidden">
+              {totalSelected}
             </span>
-          )}
-          {/* Compact selection label: number only on mobile, full text on larger screens */}
-          <span className="ml-1 text-[10px] font-medium text-muted-foreground inline sm:hidden">
-            {totalSelected}
-          </span>
-          <span className="ml-1 text-xs text-muted-foreground hidden sm:inline">
-            {totalSelected} selected
-          </span>
-          <ChevronDown className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[92vw] md:w-[1000px] max-w-[95vw] border-border p-5 rounded-xl shadow-xl surface-menu">
+            <span className="ml-1 text-xs text-muted-foreground hidden sm:inline">
+              {totalSelected} selected
+            </span>
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[92vw] md:w-[1000px] max-w-[95vw] border-border p-5 rounded-xl shadow-xl surface-menu">
         <div className="h-[70vh] max-h-[640px]">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-full">
             {/* Selected panel - sticky on desktop, always visible */}
@@ -598,156 +587,19 @@ export function ModelPicker({
                 </button>
               </div>
               {/* Master drop zone */}
-              <div
-                onDragOver={(e) => onDragOverZone(e, { target: "master" })}
-                onDrop={onDropOnMaster}
-                onDragLeave={() => setDragOverTarget(null)}
-                onClick={() => {
-                  if (isTouchDragging && draggingModelId) {
-                    dropOnMasterById(draggingModelId);
-                  }
-                }}
-                className={`rounded-lg border p-2 mb-4 transition-colors ${
-                  dragOverTarget && dragOverTarget.target === "master" ? "border-primary/60" : "border-border"
-                }`}
-                aria-label="Master model drop zone"
-              >
-                <div className="text-xs font-medium mb-2 flex items-center gap-2">
-                  <span className="badge-primary" aria-label="Primary model"></span>
-                  <span className="text-muted-foreground">Master model</span>
-                </div>
-                {masterModelInfo ? (
-                  <div className="model-card model-card-wide p-3">
-                    <div className="flex items-center gap-3 lg:hidden">
-                      {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm sm:text-base truncate">{masterModelInfo.displayName}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {masterModelInfo.fileSupport && (
-                          <span className="badge-file" aria-label="Supports files">
-                            <Paperclip className="h-3 w-3" />
-                            <span className="hidden sm:inline">Files</span>
-                          </span>
-                        )}
-                        {masterModelInfo.reasoning && (
-                          <span className="badge-file" aria-label="Supports reasoning">
-                            <Brain className="h-3 w-3" />
-                            <span className="hidden sm:inline">Reasoning</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="hidden lg:flex lg:flex-col lg:gap-2">
-                      <div className="flex items-center gap-2">
-                        {renderLogo(masterModelInfo.id, masterModelInfo.provider)}
-                        <div className="font-medium text-base truncate">{masterModelInfo.displayName}</div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {masterModelInfo.fileSupport && (
-                          <span className="badge-file" aria-label="Supports files">
-                            <Paperclip className="h-3 w-3" />
-                            <span>Files</span>
-                          </span>
-                        )}
-                        {masterModelInfo.reasoning && (
-                          <span className="badge-file" aria-label="Supports reasoning">
-                            <Brain className="h-3 w-3" />
-                            <span>Reasoning</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here to set as master</div>
-                )}
-              </div>
+              <MasterDropZone modelInfo={masterModelInfo as ModelInfo | undefined} />
 
               {/* Secondary slots */}
               <div className="px-1 mb-2 text-xs text-muted-foreground">Optional secondaries (up to {MAX_SECONDARIES})</div>
               <div className="grid grid-cols-1 gap-3">
-                {[0, 1].slice(0, MAX_SECONDARIES).map((slotIndex) => {
-                  const slotModel = secondaryInfos[slotIndex];
-                  const isDragOver = !!(dragOverTarget && dragOverTarget.target === "secondary" && dragOverTarget.index === slotIndex);
-                  return (
-                    <div
-                      key={`secondary-slot-${slotIndex}`}
-                      onDragOver={(e) => onDragOverZone(e, { target: "secondary", index: slotIndex })}
-                      onDrop={(e) => onDropOnSecondary(e, slotIndex)}
-                      onDragLeave={() => setDragOverTarget(null)}
-                      onClick={() => {
-                        if (isTouchDragging && draggingModelId) {
-                          dropOnSecondaryById(slotIndex, draggingModelId);
-                        }
-                      }}
-                      className={`rounded-lg border p-2 transition-colors ${isDragOver ? "border-primary/60" : "border-border"}`}
-                    >
-                      {slotModel ? (
-                        <div
-                          className="model-card model-card-wide p-2 cursor-pointer"
-                          draggable
-                          onDragStart={(e) => onCardDragStart(e, slotModel.id)}
-                          onDragEnd={onDragEnd}
-                          onClick={(e) => {
-                            if (isTouchDragging) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              return;
-                            }
-                            handleMultiModelToggle(slotModel.id);
-                          }}
-                          onTouchStart={(e) => onCardTouchStart(e, slotModel.id)}
-                          onTouchMove={onCardTouchMove}
-                          onTouchEnd={(e) => onCardTouchEnd(e, () => handleMultiModelToggle(slotModel.id))}
-                        >
-                          <div className="flex items-center gap-3 lg:hidden">
-                            {renderLogo(slotModel.id, slotModel.provider)}
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-sm truncate">{slotModel.displayName}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {slotModel.fileSupport && (
-                                <span className="badge-file" aria-label="Supports files">
-                                  <Paperclip className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Files</span>
-                                </span>
-                              )}
-                              {slotModel.reasoning && (
-                                <span className="badge-file" aria-label="Supports reasoning">
-                                  <Brain className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Reasoning</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="hidden lg:flex lg:flex-col lg:gap-2">
-                            <div className="flex items-center gap-2">
-                              {renderLogo(slotModel.id, slotModel.provider)}
-                              <div className="font-medium text-base truncate">{slotModel.displayName}</div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {slotModel.fileSupport && (
-                                <span className="badge-file" aria-label="Supports files">
-                                  <Paperclip className="h-3 w-3" />
-                                  <span>Files</span>
-                                </span>
-                              )}
-                              {slotModel.reasoning && (
-                                <span className="badge-file" aria-label="Supports reasoning">
-                                  <Brain className="h-3 w-3" />
-                                  <span>Reasoning</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
-                      )}
-                    </div>
-                  );
-                })}
+                {[0, 1].slice(0, MAX_SECONDARIES).map((slotIndex) => (
+                  <SecondaryDropZone
+                    key={`secondary-slot-${slotIndex}`}
+                    slotIndex={slotIndex}
+                    slotModel={secondaryInfos[slotIndex] as ModelInfo | undefined}
+                    onToggle={(id) => handleMultiModelToggle(id)}
+                  />
+                ))}
               </div>
             </div>
 
@@ -771,25 +623,13 @@ export function ModelPicker({
                           const isSelected = isPrimary || isSecondary;
                           return (
                             <div key={`card-${model.id}`} className="group relative">
-                              <ModelCardMobile
+                              <DraggableModelCard
                                 model={model as ModelInfo}
                                 isPrimary={isPrimary}
                                 isSelected={isSelected}
                                 disabled={disabled}
                                 selectedClass={selectedClass}
                                 onClick={() => !disabled && handleMultiModelToggle(model.id)}
-                                onDragStart={(e) => onCardDragStart(e, model.id)}
-                                onDragEnd={onDragEnd}
-                              />
-                              <ModelCardDesktop
-                                model={model as ModelInfo}
-                                isPrimary={isPrimary}
-                                isSelected={isSelected}
-                                disabled={disabled}
-                                selectedClass={selectedClass}
-                                onClick={() => !disabled && handleMultiModelToggle(model.id)}
-                                onDragStart={(e) => onCardDragStart(e, model.id)}
-                                onDragEnd={onDragEnd}
                               />
                             </div>
                           );
@@ -802,8 +642,46 @@ export function ModelPicker({
             </div>
           </div>
         </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {mounted && createPortal(
+        <DragOverlay dropAnimation={null} style={{ zIndex: 99999 }}>
+          {activeId ? (
+            (() => {
+              const m = availableModels.find((mm) => mm.id === activeId);
+              if (!m) return null;
+              const model = m as ModelInfo;
+              
+              return (
+                <div className="model-card model-card-wide p-3 rounded-md shadow-lg bg-background border border-border opacity-90 cursor-grabbing">
+                  <div className="flex items-center gap-3">
+                    {renderLogo(model.id, model.provider)}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm sm:text-base truncate">{model.displayName}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {model.fileSupport && (
+                        <span className="badge-file" aria-label="Supports files">
+                          <Paperclip className="h-3 w-3" />
+                          <span className="hidden sm:inline">Files</span>
+                        </span>
+                      )}
+                      {model.reasoning && (
+                        <span className="badge-file" aria-label="Supports reasoning">
+                          <Brain className="h-3 w-3" />
+                          <span className="hidden sm:inline">Reasoning</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : null}
+        </DragOverlay>,
+        document.body
+      )}
+    </DndContext>
   );
 }
 
