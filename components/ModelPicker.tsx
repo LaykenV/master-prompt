@@ -340,7 +340,7 @@ export function ModelPicker({
   };
 
   // Upgrade & usage card
-  const UpgradeUsageCard = ({ weeklyUsagePercent = 100 }: { weeklyUsagePercent?: number }) => {
+  const UpgradeUsageCard = ({ weeklyUsagePercent = 100, compact = false }: { weeklyUsagePercent?: number; compact?: boolean }) => {
     const pct = Math.max(0, Math.min(100, weeklyUsagePercent));
     const handleActivate = () => {
       // TODO: wire to billing/paywall
@@ -354,24 +354,26 @@ export function ModelPicker({
     };
     return (
       <div
-        className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"
+        className={`upgrade-card ${compact ? "p-1.5" : "p-2 sm:p-3 lg:p-4"} text-left cursor-pointer`}
         onClick={handleActivate}
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
         aria-label="Upgrade to unlock higher usage limits"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">Upgrade</span>
-              <span className="upgrade-pill">$15/month</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className={compact ? "text-[12px] font-semibold" : "text-sm font-semibold"}>Upgrade</span>
+              <span className="upgrade-pill text-[11px] sm:text-xs">$15/month</span>
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">Unlock higher usage limits</div>
+            {!compact && (
+              <div className="text-xs text-muted-foreground mt-0.5">Unlock higher usage limits</div>
+            )}
           </div>
         </div>
-        <div className="mt-2 sm:mt-3">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+        <div className={compact ? "mt-1.5" : "mt-2 sm:mt-3"}>
+          <div className={`flex items-center justify-between ${compact ? "text-[10px]" : "text-[11px]"} text-muted-foreground mb-1`}>
             <span>Weekly usage</span>
             <span>{pct}%</span>
           </div>
@@ -404,7 +406,7 @@ export function ModelPicker({
       <button
         type="button"
         onClick={onClick}
-        className={`model-card model-card-wide w-full text-left p-2 sm:p-3 ${
+        className={`model-card model-card-wide w-full text-left p-1.5 sm:p-2 ${
           disabled ? "cursor-default opacity-90" : "cursor-pointer"
         } ${selectedClass} lg:hidden`}
         aria-selected={isSelected}
@@ -535,7 +537,7 @@ export function ModelPicker({
     return (
       <div
         ref={setNodeRef}
-        className={`rounded-lg border p-1.5 sm:p-2 mb-2 sm:mb-3 lg:mb-4 transition-colors ${
+        className={`rounded-lg border p-1 sm:p-2 mb-2 sm:mb-3 lg:mb-4 transition-colors ${
           isOver ? "border-primary/60" : "border-border"
         }`}
         aria-label="Master model drop zone"
@@ -570,7 +572,7 @@ export function ModelPicker({
     return (
       <div
         ref={setNodeRef}
-        className={`rounded-lg border p-1.5 sm:p-2 transition-colors ${isOver ? "border-primary/60" : "border-border"}`}
+        className={`rounded-lg border p-1 sm:p-2 transition-colors ${isOver ? "border-primary/60" : "border-border"}`}
       >
         {slotModel ? (
           <DraggableModelCard
@@ -631,15 +633,15 @@ export function ModelPicker({
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-2 sm:p-4 lg:p-5 rounded-xl shadow-xl surface-menu mt-2 sm:mt-3 lg:mt-0">
+        <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-1.5 sm:p-4 lg:p-5 rounded-lg sm:rounded-xl shadow-xl surface-menu mt-2 sm:mt-3 lg:mt-0 max-h-[85vh] overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
         {/* Mobile top banner - more compact */}
         <div className="block lg:hidden mb-1.5 sm:mb-2">
-          <UpgradeUsageCard weeklyUsagePercent={100} />
+          <UpgradeUsageCard weeklyUsagePercent={100} compact />
         </div>
-        <div className="h-[60vh] sm:h-[68vh] md:h-[70vh] max-h-[75vh] sm:max-h-[84vh] md:max-h-[640px]">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 h-full">
+        <div className="h-auto sm:h-[68vh] md:h-[70vh] max-h-[75vh] sm:max-h-[84vh] md:max-h-[640px]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-5 h-full">
             {/* Selected panel - sticky on desktop, always visible */}
-            <div className="lg:col-span-1 lg:sticky lg:top-2 self-start surface-menu rounded-lg p-2 lg:p-3 h-full flex flex-col">
+            <div className="lg:col-span-1 lg:sticky lg:top-2 self-start surface-menu rounded-lg p-1.5 lg:p-3 h-full flex flex-col">
               <div className="flex items-center justify-between px-1 mb-1.5 sm:mb-2 lg:mb-3">
                 <span className="text-sm lg:text-base font-semibold">Selected</span>
                 <button
@@ -689,7 +691,7 @@ export function ModelPicker({
                       <div className="flex items-center gap-2 px-1">
                         <span className="text-sm sm:text-base font-semibold capitalize">{provider}</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-1.5 sm:gap-3 lg:gap-4">
                         {visibleModels.map((model) => {
                           const isPrimary = model.id === multiSelectState.master;
                           const isSecondary = multiSelectState.secondary.includes(model.id);
