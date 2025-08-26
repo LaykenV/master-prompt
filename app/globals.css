@@ -282,6 +282,97 @@
     border-color: hsl(var(--primary) / 0.25) !important;
   }
 
+  /* Upgrade card styles for Model Picker */
+  .upgrade-card {
+    position: relative;
+    border-radius: 0.9rem;
+    border: 1px solid hsl(var(--primary) / 0.28);
+    background:
+      radial-gradient(1200px 400px at 0% 0%, hsl(var(--accent) / 0.25), transparent 55%),
+      radial-gradient(900px 400px at 100% 10%, hsl(var(--primary) / 0.28), transparent 60%),
+      linear-gradient(180deg, hsl(var(--primary) / 0.16) 0%, hsl(var(--primary) / 0.08) 100%),
+      hsl(var(--card));
+    box-shadow:
+      0 18px 42px -20px hsl(var(--primary) / 0.35),
+      0 8px 22px -12px hsl(var(--foreground) / 0.18),
+      inset 0 1px 0 hsl(var(--primary) / 0.18);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+  }
+  @media (max-width: 640px) {
+    .upgrade-card {
+      padding: 0.6rem 0.75rem;
+      border-radius: 0.8rem;
+    }
+  }
+  .upgrade-card:hover {
+    border-color: hsl(var(--primary) / 0.40);
+    transform: translateY(-1px);
+    filter: saturate(1.02);
+    box-shadow:
+      0 24px 56px -22px hsl(var(--primary) / 0.40),
+      0 10px 26px -12px hsl(var(--foreground) / 0.20),
+      inset 0 1px 0 hsl(var(--primary) / 0.22);
+  }
+  .upgrade-card:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px hsl(var(--ring) / 0.85),
+      0 18px 42px -20px hsl(var(--primary) / 0.35),
+      inset 0 1px 0 hsl(var(--primary) / 0.18);
+  }
+  .dark .upgrade-card {
+    background:
+      radial-gradient(1200px 420px at 0% 0%, hsl(var(--accent) / 0.20), transparent 55%),
+      radial-gradient(900px 420px at 100% 10%, hsl(var(--primary) / 0.35), transparent 60%),
+      linear-gradient(180deg, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.10) 100%),
+      hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.34);
+    box-shadow:
+      0 18px 42px -20px hsl(var(--primary) / 0.28),
+      inset 0 1px 0 hsl(var(--primary) / 0.18);
+  }
+  .upgrade-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.70rem;
+    line-height: 1;
+    color: hsl(var(--primary-foreground));
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.85) 0%, hsl(var(--primary) / 0.65) 100%);
+    box-shadow:
+      0 6px 14px -6px hsl(var(--primary) / 0.55),
+      inset 0 1px 0 hsl(var(--primary) / 0.30);
+  }
+  .dark .upgrade-pill {
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.90) 0%, hsl(var(--primary) / 0.70) 100%);
+  }
+  .upgrade-progress-track {
+    height: 0.5rem;
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--primary) / 0.35);
+    background:
+      linear-gradient(180deg, hsl(var(--primary) / 0.10) 0%, hsl(var(--primary) / 0.06) 100%),
+      hsl(var(--secondary) / 0.9);
+    overflow: hidden;
+  }
+  @media (max-width: 640px) {
+    .upgrade-progress-track { height: 0.45rem; }
+  }
+  .upgrade-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background:
+      linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    box-shadow:
+      0 6px 14px -6px hsl(var(--primary) / 0.55),
+      inset 0 1px 0 hsl(var(--primary) / 0.30);
+  }
+
   /* Model picker card styles */
   .model-card {
     @apply relative rounded-lg border border-border bg-card p-3 transition-all;

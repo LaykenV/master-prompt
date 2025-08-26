@@ -45,7 +45,7 @@ track all usage
 ui tracker and backend checks
 
 //deploy
-try polar again
+//try polar again
 
 //mobile touch auto scroll 
 //and master model touch
@@ -54,6 +54,15 @@ try polar again
 
 //drag and drop library
 stripe?
+//create products on stripe
+//copy over keys
+set up webhook and success page and table for tracking subscription
+create usage table and init on account creation, getUsage fetches or creates, return in main user call
+
+track usage based on plan
+show in ui
+
+cron to reset weekly
 
 rate limiting?
 
@@ -64,7 +73,7 @@ settings page
 landing page
 new chat ui
 
-auth migration? better auth? https://convex-better-auth.netlify.app/ or clerk
+auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
 
 routing? react router inside /chat? local first?
 
@@ -79,3 +88,7 @@ add more toast errors
 img gen?
 
 context cli creates md files
+
+agency?
+
+mobile app?
