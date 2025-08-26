@@ -354,7 +354,7 @@ export function ModelPicker({
     };
     return (
       <div
-        className="upgrade-card p-3 sm:p-4 text-left cursor-pointer"
+        className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"
         onClick={handleActivate}
         onKeyDown={handleKeyDown}
         role="button"
@@ -370,7 +370,7 @@ export function ModelPicker({
             <div className="text-xs text-muted-foreground mt-0.5">Unlock higher usage limits</div>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-2 sm:mt-3">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
             <span>Weekly usage</span>
             <span>{pct}%</span>
@@ -535,12 +535,12 @@ export function ModelPicker({
     return (
       <div
         ref={setNodeRef}
-        className={`rounded-lg border p-1.5 sm:p-2 mb-3 sm:mb-4 transition-colors ${
+        className={`rounded-lg border p-1.5 sm:p-2 mb-2 sm:mb-3 lg:mb-4 transition-colors ${
           isOver ? "border-primary/60" : "border-border"
         }`}
         aria-label="Master model drop zone"
       >
-        <div className="text-[10px] sm:text-xs font-medium mb-1.5 sm:mb-2 flex items-center gap-2">
+        <div className="text-[10px] sm:text-xs font-medium mb-1 sm:mb-1.5 lg:mb-2 flex items-center gap-2">
           <span className="badge-primary" aria-label="Primary model"></span>
           <span className="text-muted-foreground">Master model</span>
         </div>
@@ -583,7 +583,7 @@ export function ModelPicker({
             dragId={makeSecondaryDragId(slotIndex, slotModel.id)}
           />
         ) : (
-          <div className="p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
+          <div className="p-2 sm:p-3 rounded-md border border-dashed text-xs text-muted-foreground">Drop a model here</div>
         )}
       </div>
     );
@@ -631,16 +631,16 @@ export function ModelPicker({
             <ChevronDown className="h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-4 sm:p-5 rounded-xl shadow-xl surface-menu mt-4 sm:mt-3 lg:mt-0">
-        {/* Mobile top banner */}
-        <div className="block lg:hidden mb-2">
+        <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-2 sm:p-4 lg:p-5 rounded-xl shadow-xl surface-menu mt-2 sm:mt-3 lg:mt-0">
+        {/* Mobile top banner - more compact */}
+        <div className="block lg:hidden mb-1.5 sm:mb-2">
           <UpgradeUsageCard weeklyUsagePercent={100} />
         </div>
-        <div className="h-[68vh] md:h-[70vh] max-h-[84vh] md:max-h-[640px]">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 h-full">
+        <div className="h-[60vh] sm:h-[68vh] md:h-[70vh] max-h-[75vh] sm:max-h-[84vh] md:max-h-[640px]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 h-full">
             {/* Selected panel - sticky on desktop, always visible */}
             <div className="lg:col-span-1 lg:sticky lg:top-2 self-start surface-menu rounded-lg p-2 lg:p-3 h-full flex flex-col">
-              <div className="flex items-center justify-between px-1 mb-2 lg:mb-3">
+              <div className="flex items-center justify-between px-1 mb-1.5 sm:mb-2 lg:mb-3">
                 <span className="text-sm lg:text-base font-semibold">Selected</span>
                 <button
                   type="button"
@@ -659,8 +659,8 @@ export function ModelPicker({
                 <MasterDropZone modelInfo={masterModelInfo as ModelInfo | undefined} />
 
                 {/* Secondary slots */}
-                <div className="px-1 mb-1.5 lg:mb-2 text-[10px] sm:text-xs text-muted-foreground">Optional secondaries (up to {MAX_SECONDARIES})</div>
-                <div className="grid grid-cols-1 gap-2 lg:gap-3">
+                <div className="px-1 mb-1 sm:mb-1.5 lg:mb-2 text-[10px] sm:text-xs text-muted-foreground">Optional secondaries (up to {MAX_SECONDARIES})</div>
+                <div className="grid grid-cols-1 gap-1.5 sm:gap-2 lg:gap-3">
                   {[0, 1].slice(0, MAX_SECONDARIES).map((slotIndex) => (
                     <SecondaryDropZone
                       key={`secondary-slot-${slotIndex}`}
@@ -680,16 +680,16 @@ export function ModelPicker({
 
             {/* Available models - scrollable on desktop */}
             <div className="lg:col-span-2 h-full overflow-auto pr-1">
-              <div className="flex flex-col gap-4 sm:gap-6">
+              <div className="flex flex-col gap-3 sm:gap-4 lg:gap-6">
                 {Object.entries(modelsByProvider).map(([provider, models]) => {
                   const visibleModels = models; // Keep showing all models; indicate selected state
                   if (visibleModels.length === 0) return null;
                   return (
-                    <div key={`provider-${provider}`} className="flex flex-col gap-3">
+                    <div key={`provider-${provider}`} className="flex flex-col gap-2 sm:gap-3">
                       <div className="flex items-center gap-2 px-1">
-                        <span className="text-base font-semibold capitalize">{provider}</span>
+                        <span className="text-sm sm:text-base font-semibold capitalize">{provider}</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
                         {visibleModels.map((model) => {
                           const isPrimary = model.id === multiSelectState.master;
                           const isSecondary = multiSelectState.secondary.includes(model.id);

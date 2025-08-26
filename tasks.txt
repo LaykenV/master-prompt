@@ -60,7 +60,9 @@ set up webhook and success page and table for tracking subscription
 create usage table and init on account creation, getUsage fetches or creates, return in main user call
 
 track usage based on plan
-show in ui
+//show in ui
+
+success page for checkout
 
 cron to reset weekly
 
