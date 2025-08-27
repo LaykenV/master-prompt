@@ -62,20 +62,21 @@ create usage table and init on account creation, getUsage fetches or creates, re
 track usage based on plan
 //show in ui
 
-prompt for best solution to usage tracking 
-set up webhook, subscriptions table, sync func, get customerid, gen checkout, success page, front end connection
-set up usage tracking and init on acount creation
+//prompt for best solution to usage tracking 
+//set up webhook, subscriptions table, sync func, get customerid, gen checkout, success page, front end connection
+//set up usage tracking and init on acount creation
 
-success page for checkout
+//success page for checkout
 
-cron to reset weekly
+wire usage percentage to frontend. block requests after full
+seed plan
 
 rate limiting?
 
 resend?
 
 
-settings page
+settings page with subscription data
 landing page
 new chat ui
 
