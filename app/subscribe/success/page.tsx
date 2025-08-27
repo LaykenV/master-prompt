@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import Link from "next/link";
 
 export default function SuccessPage() {
   const sync = useAction(api.stripeActions.syncAfterSuccessForSelf);
@@ -14,5 +15,12 @@ export default function SuccessPage() {
       }
     })();
   }, []);
-  return <div>Success! Finalizing your subscription...</div>;
+  return (
+    <div>
+      Success! Finalizing your subscription...
+      <div>
+        <Link href="/chat">Go to chat</Link>
+      </div>
+    </div>
+  );
 }

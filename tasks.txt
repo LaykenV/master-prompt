@@ -69,7 +69,7 @@ track usage based on plan
 //success page for checkout
 
 wire usage percentage to frontend. block requests after full
-seed plan
+//seed plan
 
 rate limiting?
 

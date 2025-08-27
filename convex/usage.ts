@@ -31,7 +31,7 @@ function computeCostCents(
   const inputUSD = (promptTokens / 1_000_000) * rates.input;
   const outputUSD = (outputTokens / 1_000_000) * rates.output;
   const inputCents = BigInt(Math.round(inputUSD * 100));
-  const outputCents = BigInt(Math.round(outputUSD * 100));
+  const outputCents = BigInt(Math.ceil(outputUSD * 100));
   return { inputCents, outputCents, totalCents: inputCents + outputCents };
 }
 
