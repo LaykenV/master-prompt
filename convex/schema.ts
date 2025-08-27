@@ -58,4 +58,78 @@ export default defineSchema({
   })
     .index("by_master_message", ["masterMessageId"]) 
     .index("by_master_thread", ["masterThreadId"]),
+
+  // Stripe billing: link Convex user -> Stripe customer
+  billingCustomers: defineTable({
+    userId: v.id("users"),
+    stripeCustomerId: v.string(),
+    email: v.optional(v.string()),
+    createdAtMs: v.number(),
+  })
+    .index("by_user", ["userId"]) 
+    .index("by_customer", ["stripeCustomerId"]),
+
+  // Latest subscription snapshot per Stripe subscription/user
+  subscriptions: defineTable({
+    userId: v.id("users"),
+    stripeCustomerId: v.string(),
+    subscriptionId: v.string(),
+    status: v.string(),
+    priceId: v.string(),
+    currentPeriodStartMs: v.number(),
+    currentPeriodEndMs: v.number(),
+    cancelAtPeriodEnd: v.boolean(),
+    paymentBrand: v.optional(v.string()),
+    paymentLast4: v.optional(v.string()),
+    updatedAtMs: v.number(),
+  })
+    .index("by_user", ["userId"]) 
+    .index("by_subscription", ["subscriptionId"]) 
+    .index("by_customer", ["stripeCustomerId"]),
+
+  // Map Stripe price -> weekly budget in cents
+  plans: defineTable({
+    priceId: v.string(),
+    name: v.string(),
+    weeklyBudgetCents: v.int64(),
+  }).index("by_price", ["priceId"]),
+
+  // Immutable ledger of usage events
+  usageEvents: defineTable({
+    userId: v.id("users"),
+    modelId: MODEL_ID_SCHEMA,
+    promptTokens: v.number(),
+    completionTokens: v.number(),
+    reasoningTokens: v.number(),
+    totalTokens: v.number(),
+    inputCents: v.int64(),
+    outputCents: v.int64(),
+    totalCents: v.int64(),
+    provider: v.string(),
+    createdAtMs: v.number(),
+    weekStartMs: v.number(),
+    monthStartMs: v.number(),
+  })
+    .index("by_user_time", ["userId", "createdAtMs"]) 
+    .index("by_user_week", ["userId", "weekStartMs"]) 
+    .index("by_user_month", ["userId", "monthStartMs"]),
+
+  // Aggregated usage per user/week for fast reads
+  weeklyUsage: defineTable({
+    userId: v.id("users"),
+    weekStartMs: v.number(),
+    totalCents: v.int64(),
+    promptTokens: v.number(),
+    completionTokens: v.number(),
+    reasoningTokens: v.number(),
+    requests: v.number(),
+    lastEventAtMs: v.number(),
+  }).index("by_user_week", ["userId", "weekStartMs"]),
+
+  // Track monthly re-ups per user to enforce once/month
+  usageReups: defineTable({
+    userId: v.id("users"),
+    monthStartMs: v.number(),
+    reupsUsed: v.number(),
+  }).index("by_user_month", ["userId", "monthStartMs"]),
 });

@@ -62,6 +62,10 @@ create usage table and init on account creation, getUsage fetches or creates, re
 track usage based on plan
 //show in ui
 
+prompt for best solution to usage tracking 
+set up webhook, subscriptions table, sync func, get customerid, gen checkout, success page, front end connection
+set up usage tracking and init on acount creation
+
 success page for checkout
 
 cron to reset weekly

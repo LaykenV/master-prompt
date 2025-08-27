@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
@@ -341,10 +341,11 @@ export function ModelPicker({
 
   // Upgrade & usage card
   const UpgradeUsageCard = ({ weeklyUsagePercent = 100 }: { weeklyUsagePercent?: number }) => {
+    const checkout = useAction(api.stripeActions.createCheckoutSession);
     const pct = Math.max(0, Math.min(100, weeklyUsagePercent));
-    const handleActivate = () => {
-      // TODO: wire to billing/paywall
-      console.log("Upgrade clicked");
+    const handleActivate = async () => {
+      const url = await checkout();
+      window.location.href = url.url;
     };
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Enter" || e.key === " ") {

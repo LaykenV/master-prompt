@@ -12,6 +12,9 @@ import type * as agent from "../agent.js";
 import type * as auth from "../auth.js";
 import type * as chat from "../chat.js";
 import type * as http from "../http.js";
+import type * as stripeActions from "../stripeActions.js";
+import type * as stripeHelpers from "../stripeHelpers.js";
+import type * as usage from "../usage.js";
 import type * as workflows from "../workflows.js";
 
 import type {
@@ -33,6 +36,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   chat: typeof chat;
   http: typeof http;
+  stripeActions: typeof stripeActions;
+  stripeHelpers: typeof stripeHelpers;
+  usage: typeof usage;
   workflows: typeof workflows;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

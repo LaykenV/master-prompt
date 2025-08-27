@@ -1,11 +1,12 @@
 import { Agent } from "@convex-dev/agent";
 import { google } from "@ai-sdk/google";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { openai } from "@ai-sdk/openai";
 import { anthropic } from "@ai-sdk/anthropic";
 import { v } from "convex/values";
 import { groq } from "@ai-sdk/groq";
 import { xai } from "@ai-sdk/xai";
+import { Id } from "./_generated/dataModel";
 
 // Available models configuration
 export const AVAILABLE_MODELS = {
@@ -271,6 +272,23 @@ export function createAgentWithModel(modelId: ModelId) {
             } else {
               console.log("No pricing data found for model:", modelId);
             }
+
+            // Record usage to Convex for the authenticated user
+            try {
+              if (userId) {
+                const provider = AVAILABLE_MODELS[modelId].provider;
+                await ctx.runMutation(internal.usage.recordEvent, {
+                  userId: userId as Id<"users">,
+                  modelId,
+                  promptTokens: usage.promptTokens,
+                  completionTokens: usage.completionTokens,
+                  reasoningTokens,
+                  provider,
+                });
+              }
+            } catch (err) {
+              console.error("Failed to record usage:", err);
+            }
         },
     });
 }
@@ -313,6 +331,22 @@ export const summaryAgent = new Agent(components.agent, {
           );
         } else {
           console.log("No pricing data found for model:", modelId);
+        }
+
+        try {
+          if (userId) {
+            const provider = AVAILABLE_MODELS[modelId].provider;
+            await ctx.runMutation(internal.usage.recordEvent, {
+              userId: userId as Id<"users">,
+              modelId,
+              promptTokens: usage.promptTokens,
+              completionTokens: usage.completionTokens,
+              reasoningTokens,
+              provider,
+            });
+          }
+        } catch (err) {
+          console.error("Failed to record usage (summaryAgent):", err);
         }
     },
 
