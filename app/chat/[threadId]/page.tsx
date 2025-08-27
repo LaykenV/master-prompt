@@ -4,6 +4,7 @@ import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useThreadMessages, optimisticallySendMessage, toUIMessages } from "@convex-dev/agent/react";
 import { ChatMessages, type ChatMessagesHandle } from "@/components/ChatMessages";
 import { MessageInput } from "@/components/message-input";
@@ -39,7 +40,7 @@ export default function ThreadPage() {
   const generateUploadUrl = useMutation(api.chat.generateUploadUrl);
   const registerUploadedFile = useAction(api.chat.registerUploadedFile);
   const uploadFileSmall = useAction(api.chat.uploadFile);
-  const checkout = useAction(api.stripeActions.createCheckoutSession);
+
 
   // Get messages to check if streaming has started
   const messages = useThreadMessages(
@@ -314,17 +315,11 @@ export default function ThreadPage() {
             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
               <p className="text-sm text-destructive">
                 Weekly limit reached. {selfStatus.subscription ? (
-                  <a href="/settings" className="underline font-medium">View Usage</a>
+                  <Link href={`/account/usage?returnChat=${threadId}`} className="underline font-medium">View Usage</Link>
                 ) : (
-                  <button 
-                    onClick={async () => {
-                      const url = await checkout();
-                      window.location.href = url.url;
-                    }}
-                    className="underline font-medium bg-transparent border-none cursor-pointer text-destructive"
-                  >
+                  <Link href={`/account/usage?returnChat=${threadId}`} className="underline font-medium text-destructive">
                     Upgrade
-                  </button>
+                  </Link>
                 )} to continue.
               </p>
             </div>

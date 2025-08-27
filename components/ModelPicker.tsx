@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "next-themes";
@@ -30,6 +30,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useSelfStatus } from "@/hooks/use-self-status";
+import Link from "next/link";
 // no search input
 
 interface ModelPickerProps {
@@ -341,36 +342,16 @@ export function ModelPicker({
   };
 
   // Upgrade & usage card
-  const UpgradeUsageCard = () => {
-    const checkout = useAction(api.stripeActions.createCheckoutSession);
+  const UpgradeUsageCard = ({ threadId }: { threadId?: string }) => {
     const { percentRemaining, subscription } = useSelfStatus();
     const pct = percentRemaining;
-    const handleActivate = async () => {
-      if (subscription) {
-        // Navigate to settings for subscribed users
-        window.location.href = "/settings";
-      } else {
-        // Create checkout session for non-subscribed users
-        const url = await checkout();
-        window.location.href = url.url;
-      }
-    };
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleActivate();
-      }
-    };
     
     if (subscription) {
       // Pro Plan card for subscribed users
       return (
-        <div
-          className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"
-          onClick={handleActivate}
-          onKeyDown={handleKeyDown}
-          role="button"
-          tabIndex={0}
+        <Link
+          href={`/account/usage${threadId ? `?returnChat=${threadId}` : ''}`}
+          className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer block"
           aria-label="View usage details"
         >
           <div className="flex items-start justify-between gap-3">
@@ -391,18 +372,15 @@ export function ModelPicker({
               <div className="upgrade-progress-fill" style={{ width: `${pct}%` }} />
             </div>
           </div>
-        </div>
+        </Link>
       );
     }
     
     // Upgrade card for non-subscribed users
     return (
-      <div
-        className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"
-        onClick={handleActivate}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
+      <Link
+        href={`/account/usage${threadId ? `?returnChat=${threadId}` : ''}`}
+        className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer block"
         aria-label="Upgrade to unlock higher usage limits"
       >
         <div className="flex items-start justify-between gap-3">
@@ -423,7 +401,7 @@ export function ModelPicker({
             <div className="upgrade-progress-fill" style={{ width: `${pct}%` }} />
           </div>
         </div>
-      </div>
+      </Link>
     );
   };
 
@@ -678,7 +656,7 @@ export function ModelPicker({
         <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-2 sm:p-4 lg:p-5 rounded-xl shadow-xl surface-menu mt-2 sm:mt-3 lg:mt-0">
         {/* Mobile top banner - more compact */}
         <div className="block lg:hidden mb-1.5 sm:mb-2">
-          <UpgradeUsageCard />
+          <UpgradeUsageCard threadId={threadId} />
         </div>
         <div className="h-[60vh] sm:h-[68vh] md:h-[70vh] max-h-[75vh] sm:max-h-[84vh] md:max-h-[640px]">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 h-full">
@@ -718,7 +696,7 @@ export function ModelPicker({
 
               {/* Desktop bottom-left upgrade card */}
               <div className="hidden lg:block mt-3">
-                <UpgradeUsageCard />
+                <UpgradeUsageCard threadId={threadId} />
               </div>
             </div>
 

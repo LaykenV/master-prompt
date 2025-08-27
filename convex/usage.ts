@@ -145,7 +145,7 @@ export const getCurrentWeekForSelf = query({
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
       }
     } else { // free plan
-      limitCents = 50n;
+      limitCents = 30n;
     }
 
     return {
@@ -313,7 +313,7 @@ export const getSelfStatus = query({
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
       }
     } else { // free plan
-      limitCents = 50n;
+      limitCents = 30n;
     }
 
     const totalCents = weekly ? (weekly.totalCents as unknown as bigint) : 0n;
@@ -378,7 +378,7 @@ export const getBudgetStatusInternal = internalQuery({
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
       }
     } else { // free plan
-      limitCents = 50n;
+      limitCents = 30n;
     }
 
     const totalCents = weekly ? (weekly.totalCents as unknown as bigint) : 0n;

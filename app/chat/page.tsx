@@ -4,6 +4,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ export default function NewChatPage() {
   const registerUploadedFile = useAction(api.chat.registerUploadedFile);
   const uploadFileSmall = useAction(api.chat.uploadFile);
   const sendMessageMutation = useMutation(api.chat.sendMessage);
-  const checkout = useAction(api.stripeActions.createCheckoutSession);
+
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-5");
@@ -310,17 +311,11 @@ export default function NewChatPage() {
             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
               <p className="text-sm text-destructive">
                 Weekly limit reached. {selfStatus.subscription ? (
-                  <a href="/settings" className="underline font-medium">View Usage</a>
+                  <Link href="/account/usage" className="underline font-medium">View Usage</Link>
                 ) : (
-                  <button 
-                    onClick={async () => {
-                      const url = await checkout();
-                      window.location.href = url.url;
-                    }}
-                    className="underline font-medium bg-transparent border-none cursor-pointer text-destructive"
-                  >
+                  <Link href="/account/usage" className="underline font-medium text-destructive">
                     Upgrade
-                  </button>
+                  </Link>
                 )} to continue.
               </p>
             </div>

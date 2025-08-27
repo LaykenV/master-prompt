@@ -74,9 +74,15 @@ track usage based on plan
 //need to make sure free plan limit works too. getCurrentWeek not checking if sub is active
 //seed plan
 
-rate limiting? need it?
+//rate limiting? need it?
 
-resend? subscription? weekly usage?
+add pro plan
+//update ui card and redirects
+add form with three tiers and click for checkout with price inside
+plans table
+//change /settings to /account and /account/usage and redirects
+
+auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
 
 
 settings page with subscription data and reup
@@ -84,9 +90,9 @@ success page ui
 landing page? need it?
 new chat ui
 
-auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
 
 routing? react router inside /chat? local first?
+resend? subscription? weekly usage?
 
 test everything
 

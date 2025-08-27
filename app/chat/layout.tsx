@@ -29,8 +29,8 @@ import {
   MessageSquare, 
   X, 
   LogOut,
-  Settings,
   Loader2,
+  User,
 } from "lucide-react";
 
 import { useAuthActions } from "@convex-dev/auth/react";
@@ -176,11 +176,11 @@ export default function ChatLayout({
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link 
-                      href={`/settings${activeThreadId ? `?returnChat=${activeThreadId}` : ''}`}
+                      href={`/account${activeThreadId ? `?returnChat=${activeThreadId}` : ''}`}
                       className="w-full justify-start gap-2"
                     >
-                      <Settings className="h-4 w-4" />
-                      <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                      <User className="h-4 w-4" />
+                      <span className="group-data-[collapsible=icon]:hidden">Account</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
