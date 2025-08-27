@@ -343,7 +343,7 @@ export function ModelPicker({
 
   // Upgrade & usage card
   const UpgradeUsageCard = ({ threadId }: { threadId?: string }) => {
-    const { percentRemaining, subscription } = useSelfStatus();
+    const { percentRemaining, subscription, planName } = useSelfStatus();
     const pct = percentRemaining;
     
     if (subscription) {
@@ -357,7 +357,7 @@ export function ModelPicker({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">Pro Plan</span>
+                <span className="text-sm font-semibold">{planName}</span>
                 <span className="upgrade-pill">Active</span>
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">Higher usage limits</div>

@@ -87,8 +87,9 @@ export const syncStripeCustomer = internalAction({
 });
 
 export const createCheckoutSession = action({
+  args: { tier: v.union(v.literal("lite"), v.literal("pro")) },
   returns: v.object({ url: v.string() }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) throw new Error("Not authenticated");
 
@@ -113,15 +114,20 @@ export const createCheckoutSession = action({
       stripeCustomerId = ensured.stripeCustomerId;
     }
     if (!stripeCustomerId) throw new Error("Failed to ensure Stripe customer");
-    const envPriceId = process.env.STRIPE_LITE_TIER_PRICE_ID;
-    if (!envPriceId) throw new Error("STRIPE_LITE_TIER_PRICE_ID is not set");
+    const envLitePriceId = process.env.STRIPE_LITE_TIER_PRICE_ID;
+    if (!envLitePriceId) throw new Error("STRIPE_LITE_TIER_PRICE_ID is not set");
+    const envProPriceId = process.env.STRIPE_PRO_TIER_PRICE_ID;
+    if (!envProPriceId) throw new Error("STRIPE_PRO_TIER_PRICE_ID is not set");
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
     if (!baseUrl) throw new Error("NEXT_PUBLIC_BASE_URL is not set");
+
+    // Select the correct price ID based on the tier
+    const priceId = args.tier === "lite" ? envLitePriceId : envProPriceId;
 
     const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: "subscription",
-      line_items: [{ price: envPriceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: `https://www.meshmind.chat/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://www.meshmind.chat`,
     });
@@ -147,5 +153,41 @@ export const syncAfterSuccessForSelf = action({
     }
     await ctx.runAction(internal.stripeActions.syncStripeCustomer, { stripeCustomerId });
     return null;
+  },
+});
+
+export const createCustomerPortalSession = action({
+  args: {},
+  returns: v.object({ url: v.string() }),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+
+    type BillingCustomer = {
+      _id: Id<"billingCustomers">;
+      _creationTime: number;
+      userId: Id<"users">;
+      stripeCustomerId: string;
+      email?: string;
+      createdAtMs: number;
+    };
+    const mapping: BillingCustomer | null = await ctx.runQuery(
+      internal.stripeHelpers.getCustomerMappingByUser,
+      { userId },
+    );
+    let stripeCustomerId: string | undefined = mapping?.stripeCustomerId;
+    if (!stripeCustomerId) {
+      const ensured: { stripeCustomerId: string } = await ctx.runAction(
+        internal.stripeActions.ensureCustomerForUser,
+        { userId },
+      );
+      stripeCustomerId = ensured.stripeCustomerId;
+    }
+    const session = await stripe.billingPortal.sessions.create({
+      customer: stripeCustomerId,
+      return_url: `https://www.meshmind.chat/account`,
+    });
+    if (!session.url) throw new Error("Stripe did not return a customer portal URL");
+    return { url: session.url };
   },
 });

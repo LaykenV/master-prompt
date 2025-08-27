@@ -78,7 +78,7 @@ track usage based on plan
 
 add pro plan
 //update ui card and redirects
-add form with three tiers and click for checkout with price inside
+//add form with three tiers and click for checkout with price inside
 plans table
 //change /settings to /account and /account/usage and redirects
 

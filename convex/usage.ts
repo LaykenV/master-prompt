@@ -115,6 +115,7 @@ export const getCurrentWeekForSelf = query({
     completionTokens: v.number(),
     reasoningTokens: v.number(),
     requests: v.number(),
+    planName: v.union(v.literal("Free"), v.literal("Lite"), v.literal("Pro")),
   }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -131,6 +132,7 @@ export const getCurrentWeekForSelf = query({
 
     // Determine plan limit from subscription -> plans
     let limitCents: bigint = 0n;
+    let planName: "Free" | "Lite" | "Pro" = "Free";
     const sub = await ctx.db
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -143,6 +145,7 @@ export const getCurrentWeekForSelf = query({
         .unique();
       if (plan) {
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
+        planName = plan.name as "Free" | "Lite" | "Pro";
       }
     } else { // free plan
       limitCents = 30n;
@@ -156,6 +159,7 @@ export const getCurrentWeekForSelf = query({
       completionTokens: weekly ? weekly.completionTokens : 0,
       reasoningTokens: weekly ? weekly.reasoningTokens : 0,
       requests: weekly ? weekly.requests : 0,
+      planName,
     };
   },
 });
@@ -259,6 +263,7 @@ export const getSelfStatus = query({
       remainingCents: v.int64(),
     }),
     canSend: v.boolean(),
+    planName: v.union(v.literal("Free"), v.literal("Lite"), v.literal("Pro")),
   }),
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
@@ -274,6 +279,7 @@ export const getSelfStatus = query({
           remainingCents: 0n,
         },
         canSend: false,
+        planName: "Free" as const,
       };
     }
 
@@ -295,6 +301,7 @@ export const getSelfStatus = query({
       .first();
     
     let subscription = null;
+    let planName: "Free" | "Lite" | "Pro" = "Free";
     if (sub && sub.priceId && sub.status === "active" && sub.currentPeriodEndMs > nowMs) {
       subscription = {
         status: sub.status,
@@ -311,6 +318,7 @@ export const getSelfStatus = query({
         .unique();
       if (plan) {
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
+        planName = plan.name as "Free" | "Lite" | "Pro";
       }
     } else { // free plan
       limitCents = 30n;
@@ -331,6 +339,7 @@ export const getSelfStatus = query({
         remainingCents,
       },
       canSend,
+      planName: planName,
     };
   },
 });
