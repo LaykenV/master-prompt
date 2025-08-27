@@ -29,6 +29,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useSelfStatus } from "@/hooks/use-self-status";
 // no search input
 
 interface ModelPickerProps {
@@ -342,14 +343,17 @@ export function ModelPicker({
   // Upgrade & usage card
   const UpgradeUsageCard = () => {
     const checkout = useAction(api.stripeActions.createCheckoutSession);
-    const usage = useQuery(api.usage.getCurrentWeekForSelf);
-    const weeklyUsagePercentageRemaining = usage?.limitCents ? Math.round((Number(usage.limitCents) - Number(usage.totalCents)) / Number(usage.limitCents) * 100) : 0;
-    const pct = Math.max(0, Math.min(100, weeklyUsagePercentageRemaining));
-    console.log("usage", usage);
-    console.log("pct", weeklyUsagePercentageRemaining);
+    const { percentRemaining, subscription } = useSelfStatus();
+    const pct = percentRemaining;
     const handleActivate = async () => {
-      const url = await checkout();
-      window.location.href = url.url;
+      if (subscription) {
+        // Navigate to settings for subscribed users
+        window.location.href = "/settings";
+      } else {
+        // Create checkout session for non-subscribed users
+        const url = await checkout();
+        window.location.href = url.url;
+      }
     };
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -357,6 +361,41 @@ export function ModelPicker({
         handleActivate();
       }
     };
+    
+    if (subscription) {
+      // Pro Plan card for subscribed users
+      return (
+        <div
+          className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"
+          onClick={handleActivate}
+          onKeyDown={handleKeyDown}
+          role="button"
+          tabIndex={0}
+          aria-label="View usage details"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">Pro Plan</span>
+                <span className="upgrade-pill">Active</span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">Higher usage limits</div>
+            </div>
+          </div>
+          <div className="mt-2 sm:mt-3">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+              <span>Weekly usage remaining</span>
+              <span>{pct}%</span>
+            </div>
+            <div className="upgrade-progress-track">
+              <div className="upgrade-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Upgrade card for non-subscribed users
     return (
       <div
         className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer"

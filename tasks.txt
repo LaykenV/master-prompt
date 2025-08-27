@@ -68,18 +68,19 @@ track usage based on plan
 
 //success page for checkout
 
-wire usage percentage to frontend. block requests after full
-need to check limit before sending message in frontend and backend
+//wire usage percentage to frontend. block requests after full. need to check status active and ?
+edit 'upgrade' section if subscribed
+//need to check limit before sending message in frontend and backend
 //need to make sure free plan limit works too. getCurrentWeek not checking if sub is active
 //seed plan
 
-rate limiting?
+rate limiting? need it?
 
-resend?
+resend? subscription? weekly usage?
 
 
-settings page with subscription data
-landing page
+settings page with subscription data and reup
+landing page? need it?
 new chat ui
 
 auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
@@ -97,6 +98,9 @@ add more toast errors
 img gen?
 
 context cli creates md files
+
+make template with stripe
+update portfolio / resume
 
 agency?
 

@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { MODEL_ID_SCHEMA, MODEL_PRICING_USD_PER_MTOKEN, ModelId } from "./agent";
@@ -226,6 +226,171 @@ export const reUpCurrentWeekForSelf = mutation({
     }
 
     return { ok: true, message: "Re-up successful" };
+  },
+});
+
+export const getSelfStatus = query({
+  args: {},
+  returns: v.object({
+    isAuthenticated: v.boolean(),
+    user: v.union(
+      v.null(),
+      v.object({
+        _id: v.id("users"),
+        email: v.optional(v.string()),
+      })
+    ),
+    subscription: v.union(
+      v.null(),
+      v.object({
+        status: v.string(),
+        priceId: v.string(),
+        cancelAtPeriodEnd: v.boolean(),
+        currentPeriodEndMs: v.number(),
+        paymentBrand: v.optional(v.string()),
+        paymentLast4: v.optional(v.string()),
+        updatedAtMs: v.number(),
+      })
+    ),
+    usage: v.object({
+      weekStartMs: v.number(),
+      totalCents: v.int64(),
+      limitCents: v.int64(),
+      remainingCents: v.int64(),
+    }),
+    canSend: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return {
+        isAuthenticated: false,
+        user: null,
+        subscription: null,
+        usage: {
+          weekStartMs: 0,
+          totalCents: 0n,
+          limitCents: 0n,
+          remainingCents: 0n,
+        },
+        canSend: false,
+      };
+    }
+
+    const user = await ctx.db.get(userId);
+    const nowMs = Date.now();
+    const weekStartMs = startOfIsoWeekMs(nowMs);
+
+    const weekly = await ctx.db
+      .query("weeklyUsage")
+      .withIndex("by_user_week", (q) => q.eq("userId", userId).eq("weekStartMs", weekStartMs))
+      .unique();
+
+    // Determine plan limit from subscription -> plans
+    let limitCents: bigint = 0n;
+    const sub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .first();
+    
+    let subscription = null;
+    if (sub && sub.priceId && sub.status === "active" && sub.currentPeriodEndMs > nowMs) {
+      subscription = {
+        status: sub.status,
+        priceId: sub.priceId,
+        cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+        currentPeriodEndMs: sub.currentPeriodEndMs,
+        paymentBrand: sub.paymentBrand,
+        paymentLast4: sub.paymentLast4,
+        updatedAtMs: sub.updatedAtMs,
+      };
+      const plan = await ctx.db
+        .query("plans")
+        .withIndex("by_price", (q) => q.eq("priceId", sub.priceId))
+        .unique();
+      if (plan) {
+        limitCents = plan.weeklyBudgetCents as unknown as bigint;
+      }
+    } else { // free plan
+      limitCents = 50n;
+    }
+
+    const totalCents = weekly ? (weekly.totalCents as unknown as bigint) : 0n;
+    const remainingCents = limitCents - totalCents;
+    const canSend = totalCents < limitCents;
+
+    return {
+      isAuthenticated: true,
+      user: user ? { _id: user._id, email: user.email } : null,
+      subscription,
+      usage: {
+        weekStartMs,
+        totalCents,
+        limitCents,
+        remainingCents,
+      },
+      canSend,
+    };
+  },
+});
+
+export const getBudgetStatusInternal = internalQuery({
+  args: {},
+  returns: v.object({
+    canSend: v.boolean(),
+    totalCents: v.int64(),
+    limitCents: v.int64(),
+    remainingCents: v.int64(),
+  }),
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      return {
+        canSend: false,
+        totalCents: 0n,
+        limitCents: 0n,
+        remainingCents: 0n,
+      };
+    }
+
+    const nowMs = Date.now();
+    const weekStartMs = startOfIsoWeekMs(nowMs);
+
+    const weekly = await ctx.db
+      .query("weeklyUsage")
+      .withIndex("by_user_week", (q) => q.eq("userId", userId).eq("weekStartMs", weekStartMs))
+      .unique();
+
+    // Determine plan limit from subscription -> plans
+    let limitCents: bigint = 0n;
+    const sub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .first();
+    if (sub && sub.priceId && sub.status === "active" && sub.currentPeriodEndMs > nowMs) {
+      const plan = await ctx.db
+        .query("plans")
+        .withIndex("by_price", (q) => q.eq("priceId", sub.priceId))
+        .unique();
+      if (plan) {
+        limitCents = plan.weeklyBudgetCents as unknown as bigint;
+      }
+    } else { // free plan
+      limitCents = 50n;
+    }
+
+    const totalCents = weekly ? (weekly.totalCents as unknown as bigint) : 0n;
+    const remainingCents = limitCents - totalCents;
+    const canSend = totalCents < limitCents;
+
+    return {
+      canSend,
+      totalCents,
+      limitCents,
+      remainingCents,
+    };
   },
 });
 

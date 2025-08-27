@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 import { toast } from "sonner";
+import { useSelfStatus } from "@/hooks/use-self-status";
 
 export default function NewChatPage() {
   const router = useRouter();
   const user = useQuery(api.chat.getUser);
+  const selfStatus = useSelfStatus();
   const availableModels = useQuery(api.chat.getAvailableModels);
   const createThread = useAction(api.chat.createThread);
   const startMultiModelGeneration = useAction(api.chat.startMultiModelGeneration);
@@ -18,6 +20,7 @@ export default function NewChatPage() {
   const registerUploadedFile = useAction(api.chat.registerUploadedFile);
   const uploadFileSmall = useAction(api.chat.uploadFile);
   const sendMessageMutation = useMutation(api.chat.sendMessage);
+  const checkout = useAction(api.stripeActions.createCheckoutSession);
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[] | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>("gpt-5");
@@ -183,6 +186,12 @@ export default function NewChatPage() {
     const content = input.trim();
     console.log("content", content);
     if (!content || isCreating || !user?._id) return;
+
+    // Check budget status before proceeding
+    if (!selfStatus?.canSend) {
+      toast.error("Weekly limit reached. Upgrade or try again next week.");
+      return;
+    }
     setIsCreating(true);
     
     try {
@@ -279,6 +288,8 @@ export default function NewChatPage() {
               </div>
             )}
 
+
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
                 <h3 className="font-semibold mb-2 text-card-foreground">💡 Ask anything</h3>
@@ -293,6 +304,29 @@ export default function NewChatPage() {
         </div>
       </div>
 
+      {user && selfStatus && !selfStatus.canSend && (
+        <div className="p-4 pb-0">
+          <div className="mx-auto max-w-4xl">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
+              <p className="text-sm text-destructive">
+                Weekly limit reached. {selfStatus.subscription ? (
+                  <a href="/settings" className="underline font-medium">View Usage</a>
+                ) : (
+                  <button 
+                    onClick={async () => {
+                      const url = await checkout();
+                      window.location.href = url.url;
+                    }}
+                    className="underline font-medium bg-transparent border-none cursor-pointer text-destructive"
+                  >
+                    Upgrade
+                  </button>
+                )} to continue.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="p-4">
         <div className="mx-auto max-w-4xl">
           <form onSubmit={onStart} className="space-y-4">
@@ -302,7 +336,7 @@ export default function NewChatPage() {
               placeholder="Start a new chat..."
               {...attachmentsProps}
               isGenerating={isCreating}
-              disabled={!user}
+              disabled={!user || (selfStatus && !selfStatus.canSend)}
               className="min-h-[60px]"
               modelPicker={{
                 selectedModel,

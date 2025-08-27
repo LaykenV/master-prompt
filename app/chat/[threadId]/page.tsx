@@ -10,12 +10,14 @@ import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 import { toast } from "sonner";
 import { useConvexAuth } from "convex/react";
+import { useSelfStatus } from "@/hooks/use-self-status";
 
 export default function ThreadPage() {
   const params = useParams();
   const { isAuthenticated } = useConvexAuth();
   const threadId = String((params as { threadId: string }).threadId);
   const user = useQuery(api.chat.getUser);
+  const selfStatus = useSelfStatus();
   const threadModel = useQuery(api.chat.getThreadModel, isAuthenticated ? { threadId } : "skip");
   const availableModels = useQuery(api.chat.getAvailableModels);
   const sendMessage = useMutation(api.chat.sendMessage).withOptimisticUpdate(
@@ -37,6 +39,7 @@ export default function ThreadPage() {
   const generateUploadUrl = useMutation(api.chat.generateUploadUrl);
   const registerUploadedFile = useAction(api.chat.registerUploadedFile);
   const uploadFileSmall = useAction(api.chat.uploadFile);
+  const checkout = useAction(api.stripeActions.createCheckoutSession);
 
   // Get messages to check if streaming has started
   const messages = useThreadMessages(
@@ -249,6 +252,12 @@ export default function ThreadPage() {
     e?.preventDefault();
     const content = (text ?? input).trim();
     if (!content || isSending || !user?._id) return;
+
+    // Check budget status before proceeding
+    if (!selfStatus?.canSend) {
+      toast.error("Weekly limit reached. Upgrade or try again next week.");
+      return;
+    }
     setIsSending(true);
     // Ensure view is pinned to bottom when sending
     try { messagesRef.current?.scrollToBottomNow(); } catch {}
@@ -289,7 +298,7 @@ export default function ThreadPage() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelSelection, startMultiModelGeneration, files, ensureUploadTask]);
+  }, [input, isSending, user?._id, threadId, sendMessage, selectedModel, multiModelSelection, startMultiModelGeneration, files, ensureUploadTask, selfStatus]);
 
 
 
@@ -299,6 +308,29 @@ export default function ThreadPage() {
       <div className="flex-1 overflow-hidden">
         <ChatMessages ref={messagesRef} messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
+      {user && selfStatus && !selfStatus.canSend && (
+        <div className="p-4 pb-0">
+          <div className="mx-auto max-w-4xl">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
+              <p className="text-sm text-destructive">
+                Weekly limit reached. {selfStatus.subscription ? (
+                  <a href="/settings" className="underline font-medium">View Usage</a>
+                ) : (
+                  <button 
+                    onClick={async () => {
+                      const url = await checkout();
+                      window.location.href = url.url;
+                    }}
+                    className="underline font-medium bg-transparent border-none cursor-pointer text-destructive"
+                  >
+                    Upgrade
+                  </button>
+                )} to continue.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="p-4">
         <div className="mx-auto max-w-4xl">
           <form onSubmit={(e) => handleSend(undefined, e)} className="space-y-4">
@@ -308,7 +340,7 @@ export default function ThreadPage() {
               placeholder="Type your message..."
               {...attachmentsProps}
               isGenerating={isSending}
-              disabled={!user}
+              disabled={!user || (selfStatus && !selfStatus.canSend)}
               className="min-h-[60px]"
               modelPicker={{
                 threadId,

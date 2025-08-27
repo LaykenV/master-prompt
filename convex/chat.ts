@@ -290,6 +290,12 @@ export const sendMessage = mutation({
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+
+        // Check budget before starting
+        const budgetStatus = await ctx.runQuery(internal.usage.getBudgetStatusInternal, {});
+        if (!budgetStatus.canSend) {
+            throw new Error("Weekly limit reached. Upgrade or try again next week.");
+        }
         
         // If a new model is specified, update the thread's model preference
         if (modelId) {
@@ -474,6 +480,12 @@ export const startMultiModelGeneration = action({
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+
+        // Check budget before starting
+        const budgetStatus = await ctx.runQuery(internal.usage.getBudgetStatusInternal, {});
+        if (!budgetStatus.canSend) {
+            throw new Error("Weekly limit reached. Upgrade or try again next week.");
+        }
 
         // Enforce a maximum of 3 total models (1 master + up to 2 secondary)
         const cappedSecondaries = (secondaryModelIds ?? []).slice(0, 2);
