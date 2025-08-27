@@ -5,7 +5,7 @@ import {
 } from "@convex-dev/auth/nextjs/server";
 
 const isHomePage = createRouteMatcher(["/"]);
-const isProtectedRoute = createRouteMatcher(["/server", "/chat", "/account", "/account/usage", "/chat/:threadId"]);
+const isProtectedRoute = createRouteMatcher(["/server", "/chat", "/account", "/account/usage", "/account/subscription", "/account/subscription/success", "/chat/:threadId"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   if (isHomePage(request) && (await convexAuth.isAuthenticated())) {

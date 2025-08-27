@@ -83,14 +83,15 @@ track usage based on plan
 //change /settings to /account and /account/usage and redirects
 
 //reup only for lite and pro
-light mode text color
+//light mode text color
 
 auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
 
 
 //account pages
-success page ui
-landing page? need it?
+//success page ui
+create component with logos and beams
+landing page? 
 new chat ui
 
 

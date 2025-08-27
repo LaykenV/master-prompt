@@ -128,7 +128,7 @@ export const createCheckoutSession = action({
       customer: stripeCustomerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `https://www.meshmind.chat/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `https://www.meshmind.chat/account/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://www.meshmind.chat`,
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
