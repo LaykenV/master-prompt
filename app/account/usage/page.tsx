@@ -4,6 +4,8 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useSelfStatus } from "@/hooks/use-self-status";
 import { useState } from "react";
+import Link from "next/link";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function UsagePage() {
   const reUp = useMutation(api.usage.reUpCurrentWeekForSelf);
@@ -11,6 +13,7 @@ export default function UsagePage() {
   const [isReUpLoading, setIsReUpLoading] = useState(false);
   const [reUpMessage, setReUpMessage] = useState<string>("");
   const weekly = useQuery(api.usage.getCurrentWeekForSelf);
+  const reUpStatus = useQuery(api.usage.getReUpStatusForSelf);
 
 
 
@@ -35,6 +38,8 @@ export default function UsagePage() {
   const formatDate = (ms: number) => {
     return new Date(ms).toLocaleDateString();
   };
+
+
 
   if (selfStatus === undefined) {
     return (
@@ -127,30 +132,66 @@ export default function UsagePage() {
             <h3 className="section-card-title mb-4">Weekly Re-up</h3>
             <div className="info-banner mb-4">
               <p className="text-sm">
-                <strong>Monthly Re-up:</strong> Reset your weekly usage once per month. 
-                This will clear your current week&apos;s usage and restore your full weekly limit.
+                {reUpStatus?.planName === 'Free' ? (
+                  <>
+                    <strong>Upgrade Required:</strong> Re-up is available on Lite and Pro plans. 
+                    Upgrade your plan to reset your weekly usage once per month.
+                  </>
+                ) : reUpStatus?.alreadyUsed ? (
+                  <>
+                    <strong>Re-up Used:</strong> You&apos;ve already used your monthly re-up. 
+                    Next re-up available: {reUpStatus.nextEligibleMs ? formatDate(reUpStatus.nextEligibleMs) : "Next month"}.
+                  </>
+                ) : (
+                  <>
+                    <strong>Monthly Re-up:</strong> Reset your weekly usage once per month. 
+                    This will clear your current week&apos;s usage and restore your full weekly limit.
+                  </>
+                )}
               </p>
             </div>
             
-            <div className="flex items-center gap-4">
-              <Button 
-                onClick={handleReUp}
-                disabled={isReUpLoading}
-                variant="outline"
-                className="btn-new-chat-compact"
-              >
-                {isReUpLoading ? 'Re-upping...' : 'Re-up Weekly Usage'}
-              </Button>
-              
-              {reUpMessage && (
-                <div className={`text-sm ${
-                  reUpMessage.includes('successful') || reUpMessage.includes('Re-up successful') 
-                    ? 'text-green-600' 
-                    : 'text-red-600'
-                }`}>
-                  {reUpMessage}
-                </div>
-              )}
+            <div className="space-y-3">
+              {/* Action row */}
+              <div className="flex items-center gap-4">
+                {reUpStatus && reUpStatus.planName === 'Free' ? (
+                  <Button asChild className="btn-new-chat-compact">
+                    <Link href="/account/subscription">Upgrade to unlock re-up</Link>
+                  </Button>
+                ) : (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button 
+                            onClick={handleReUp}
+                            disabled={isReUpLoading || !reUpStatus || !reUpStatus.eligible}
+                            variant="outline"
+                            className="btn-new-chat-compact"
+                          >
+                            {isReUpLoading ? 'Re-upping…' : 'Re-up Weekly Usage'}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {!reUpStatus || !reUpStatus.eligible ? (
+                        <TooltipContent>
+                          {reUpStatus?.alreadyUsed ? 'Already used this month' : (reUpStatus?.reason || 'Not eligible')}
+                        </TooltipContent>
+                      ) : null}
+                    </Tooltip>
+                  </>
+                )}
+
+                {reUpMessage && (
+                  <div className={`text-sm ${
+                    reUpMessage.includes('successful') || reUpMessage.includes('Re-up successful') 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {reUpMessage}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
