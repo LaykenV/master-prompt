@@ -48,28 +48,24 @@ export default function UsagePage() {
 
   return (
     <div className="space-y-6">
-        <div className="mx-auto">
-          <h1 className="text-2xl font-semibold">Usage</h1>
-        </div>
-
           {/* Weekly Usage Statistics */}
-          <div className="bg-card border rounded-lg p-6">
-            <h3 className="font-semibold text-lg mb-4">Weekly Usage</h3>
+          <div className="section-card p-6">
+            <h3 className="section-card-title mb-4">Weekly Usage</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-sm text-muted-foreground mb-1">Used</div>
-                <div className="text-2xl font-bold">{formatCents(selfStatus.usage?.totalCents || 0)}</div>
+            <div className="stats-row mb-6">
+              <div className="stat-pill">
+                <div className="stat-pill-label">Used</div>
+                <div className="stat-pill-value">{formatCents(selfStatus.usage?.totalCents || 0)}</div>
               </div>
               
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-sm text-muted-foreground mb-1">Limit</div>
-                <div className="text-2xl font-bold">{formatCents(selfStatus.usage?.limitCents || 0)}</div>
+              <div className="stat-pill">
+                <div className="stat-pill-label">Limit</div>
+                <div className="stat-pill-value">{formatCents(selfStatus.usage?.limitCents || 0)}</div>
               </div>
               
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-sm text-muted-foreground mb-1">Remaining</div>
-                <div className="text-2xl font-bold">{formatCents(selfStatus.usage?.remainingCents || 0)}</div>
+              <div className="stat-pill">
+                <div className="stat-pill-label">Remaining</div>
+                <div className="stat-pill-value">{formatCents(selfStatus.usage?.remainingCents || 0)}</div>
               </div>
             </div>
 
@@ -81,12 +77,9 @@ export default function UsagePage() {
                   {100 - (selfStatus.percentRemaining || 0)}% used
                 </span>
               </div>
-              <div className="w-full rounded-full h-3 surface-input">
+              <div className="w-full rounded-full h-3 upgrade-progress-track">
                 <div 
-                  className={`h-3 rounded-full transition-all ${
-                    selfStatus.isOverLimit ? 'bg-destructive' : 
-                    (100 - (selfStatus.percentRemaining || 0)) > 80 ? 'bg-yellow-500' : 'bg-primary'
-                  } shadow`}
+                  className={`${selfStatus.isOverLimit ? 'danger-progress' : 'upgrade-progress-fill'} transition-all`}
                   style={{ width: `${Math.min(100, 100 - (selfStatus.percentRemaining || 0))}%` }}
                 ></div>
               </div>
@@ -130,10 +123,10 @@ export default function UsagePage() {
           </div>
 
           {/* Re-up Section */}
-          <div className="bg-card border rounded-lg p-6">
-            <h3 className="font-semibold text-lg mb-4">Weekly Re-up</h3>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-800">
+          <div className="section-card p-6">
+            <h3 className="section-card-title mb-4">Weekly Re-up</h3>
+            <div className="info-banner mb-4">
+              <p className="text-sm">
                 <strong>Monthly Re-up:</strong> Reset your weekly usage once per month. 
                 This will clear your current week&apos;s usage and restore your full weekly limit.
               </p>
@@ -144,6 +137,7 @@ export default function UsagePage() {
                 onClick={handleReUp}
                 disabled={isReUpLoading}
                 variant="outline"
+                className="btn-new-chat-compact"
               >
                 {isReUpLoading ? 'Re-upping...' : 'Re-up Weekly Usage'}
               </Button>

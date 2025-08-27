@@ -13,7 +13,7 @@ export default function AccountTabs() {
   const tabs: Array<{ href: string; label: string; key: string }> = [
     { href: "/account", label: "Account", key: "account" },
     { href: "/account/usage", label: "Usage", key: "usage" },
-    { href: "/subscription", label: "Subscription", key: "subscription" },
+    { href: "/account/subscription", label: "Subscription", key: "subscription" },
   ];
 
   const withReturnChat = (href: string) => {

@@ -76,11 +76,13 @@ track usage based on plan
 
 //rate limiting? need it?
 
-add pro plan
+//add pro plan
 //update ui card and redirects
 //add form with three tiers and click for checkout with price inside
-plans table
+//plans table
 //change /settings to /account and /account/usage and redirects
+
+reup only for lite and pro
 
 auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
 

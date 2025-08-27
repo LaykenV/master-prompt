@@ -379,7 +379,7 @@ export function ModelPicker({
     // Upgrade card for non-subscribed users
     return (
       <Link
-        href={`/account/usage${threadId ? `?returnChat=${threadId}` : ''}`}
+        href={`/account/subscription${threadId ? `?returnChat=${threadId}` : ''}`}
         className="upgrade-card p-2 sm:p-3 lg:p-4 text-left cursor-pointer block"
         aria-label="Upgrade to unlock higher usage limits"
       >

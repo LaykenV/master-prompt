@@ -317,7 +317,7 @@ export default function ThreadPage() {
                 Weekly limit reached. {selfStatus.subscription ? (
                   <Link href={`/account/usage?returnChat=${threadId}`} className="underline font-medium">View Usage</Link>
                 ) : (
-                  <Link href={`/account/usage?returnChat=${threadId}`} className="underline font-medium text-destructive">
+                  <Link href={`/account/subscription?returnChat=${threadId}`} className="underline font-medium text-destructive">
                     Upgrade
                   </Link>
                 )} to continue.
