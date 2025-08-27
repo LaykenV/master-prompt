@@ -340,9 +340,13 @@ export function ModelPicker({
   };
 
   // Upgrade & usage card
-  const UpgradeUsageCard = ({ weeklyUsagePercent = 100 }: { weeklyUsagePercent?: number }) => {
+  const UpgradeUsageCard = () => {
     const checkout = useAction(api.stripeActions.createCheckoutSession);
-    const pct = Math.max(0, Math.min(100, weeklyUsagePercent));
+    const usage = useQuery(api.usage.getCurrentWeekForSelf);
+    const weeklyUsagePercentageRemaining = usage?.limitCents ? Math.round((Number(usage.limitCents) - Number(usage.totalCents)) / Number(usage.limitCents) * 100) : 0;
+    const pct = Math.max(0, Math.min(100, weeklyUsagePercentageRemaining));
+    console.log("usage", usage);
+    console.log("pct", weeklyUsagePercentageRemaining);
     const handleActivate = async () => {
       const url = await checkout();
       window.location.href = url.url;
@@ -373,7 +377,7 @@ export function ModelPicker({
         </div>
         <div className="mt-2 sm:mt-3">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-            <span>Weekly usage</span>
+            <span>Weekly usage remaining</span>
             <span>{pct}%</span>
           </div>
           <div className="upgrade-progress-track">
@@ -635,7 +639,7 @@ export function ModelPicker({
         <DropdownMenuContent align="start" sideOffset={10} className="w-[94vw] md:w-[1000px] max-w-[95vw] border-border p-2 sm:p-4 lg:p-5 rounded-xl shadow-xl surface-menu mt-2 sm:mt-3 lg:mt-0">
         {/* Mobile top banner - more compact */}
         <div className="block lg:hidden mb-1.5 sm:mb-2">
-          <UpgradeUsageCard weeklyUsagePercent={100} />
+          <UpgradeUsageCard />
         </div>
         <div className="h-[60vh] sm:h-[68vh] md:h-[70vh] max-h-[75vh] sm:max-h-[84vh] md:max-h-[640px]">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 h-full">
@@ -675,7 +679,7 @@ export function ModelPicker({
 
               {/* Desktop bottom-left upgrade card */}
               <div className="hidden lg:block mt-3">
-                <UpgradeUsageCard weeklyUsagePercent={100} />
+                <UpgradeUsageCard />
               </div>
             </div>
 

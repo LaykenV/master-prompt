@@ -139,6 +139,7 @@ export const createThread = action({
             await ctx.scheduler.runAfter(0, internal.chat.generateThreadTitle, {
                 threadId,
                 initialPrompt: args.initialPrompt,
+                userId,
             });
         }
         
@@ -255,6 +256,7 @@ export const saveInitialMessage = internalMutation({
                 threadId,
                 promptMessageId: messageId,
                 modelId,
+                userId,
             });
         } else {
             // Regular text-only message
@@ -267,6 +269,7 @@ export const saveInitialMessage = internalMutation({
                 threadId,
                 promptMessageId: messageId,
                 modelId,
+                userId,
             });
         }
         
@@ -386,14 +389,15 @@ export const generateResponseStreamingAsync = internalAction({
         threadId: v.string(), 
         promptMessageId: v.string(),
         modelId: MODEL_ID_SCHEMA,
+        userId: v.optional(v.id("users")),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, promptMessageId, modelId }) => {
+    handler: async (ctx, { threadId, promptMessageId, modelId, userId }) => {
         try {
             // Create an agent instance with the specific model for this thread
             const threadAgent = createAgentWithModel(modelId as ModelId);
             
-            const { thread } = await threadAgent.continueThread(ctx, { threadId });
+            const { thread } = await threadAgent.continueThread(ctx, { threadId, userId });
             const result = await thread.streamText({ promptMessageId }, { saveStreamDeltas: {chunking: "line", throttleMs: 20 } });
             await result.consumeStream();
             return null;
@@ -746,12 +750,13 @@ export const generateThreadTitle = internalAction({
     args: {
         threadId: v.string(),
         initialPrompt: v.optional(v.string()),
+        userId: v.optional(v.id("users")),
     },
     returns: v.null(),
-    handler: async (ctx, { threadId, initialPrompt }) => {
+    handler: async (ctx, { threadId, initialPrompt, userId }) => {
         try {
             const agent = summaryAgent;
-            const { thread } = await agent.continueThread(ctx, { threadId });
+            const { thread } = await agent.continueThread(ctx, { threadId, userId });
             const prompt = `Generate a concise, descriptive conversation title (max 20 characters). Use Title Case. Do not include quotes. Here is the initial prompt: "${initialPrompt}". Respond with only the title.`;
 
             const result = await thread.generateText({ prompt }, { storageOptions: { saveMessages: "none" } });

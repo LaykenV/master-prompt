@@ -332,22 +332,5 @@ export const summaryAgent = new Agent(components.agent, {
         } else {
           console.log("No pricing data found for model:", modelId);
         }
-
-        try {
-          if (userId) {
-            const provider = AVAILABLE_MODELS[modelId].provider;
-            await ctx.runMutation(internal.usage.recordEvent, {
-              userId: userId as Id<"users">,
-              modelId,
-              promptTokens: usage.promptTokens,
-              completionTokens: usage.completionTokens,
-              reasoningTokens,
-              provider,
-            });
-          }
-        } catch (err) {
-          console.error("Failed to record usage (summaryAgent):", err);
-        }
-    },
-
+    }
 });

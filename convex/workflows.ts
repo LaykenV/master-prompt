@@ -266,7 +266,7 @@ export const generateModelResponse = internalAction({
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);
       
-      const { thread } = await agent.continueThread(ctx, { threadId });
+      const { thread } = await agent.continueThread(ctx, { threadId, userId });
       const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
       await result.consumeStream();
       
@@ -339,7 +339,7 @@ Using the reasoning from these other agents as additional advice, provide an upd
 
       // Create an agent instance with the specific model
       const agent = createAgentWithModel(modelId as ModelId);
-      const { thread } = await agent.continueThread(ctx, { threadId });
+      const { thread } = await agent.continueThread(ctx, { threadId, userId });
       const result = await thread.streamText({ promptMessageId: messageId }, { saveStreamDeltas: { chunking: "line", throttleMs: 500 } });
       await result.consumeStream();
       
@@ -406,7 +406,7 @@ Synthesize these peer-reviewed conclusions into a single, comprehensive, and aut
 
       // Use the master model to generate the synthesis
       const masterAgent = createAgentWithModel(masterModelId as ModelId);
-      const { thread } = await masterAgent.continueThread(ctx, { threadId: masterThreadId });
+      const { thread } = await masterAgent.continueThread(ctx, { threadId: masterThreadId, userId });
       
       // Generate the synthesis response with streaming, using the saved message ID
       const result = await thread.streamText(

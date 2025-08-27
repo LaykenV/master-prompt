@@ -136,7 +136,7 @@ export const getCurrentWeekForSelf = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .first();
-    if (sub && sub.priceId) {
+    if (sub && sub.priceId && sub.status === "active") {
       const plan = await ctx.db
         .query("plans")
         .withIndex("by_price", (q) => q.eq("priceId", sub.priceId))
@@ -144,6 +144,8 @@ export const getCurrentWeekForSelf = query({
       if (plan) {
         limitCents = plan.weeklyBudgetCents as unknown as bigint;
       }
+    } else { // free plan
+      limitCents = 50n;
     }
 
     return {
