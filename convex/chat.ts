@@ -15,6 +15,7 @@ import {
     getFile,
 } from "@convex-dev/agent";
 import { workflow } from "./workflows";
+import rateLimiter from "./rateLimits";
 
 // Generate a short-lived upload URL for uploading large files directly to Convex storage
 export const generateUploadUrl = mutation({
@@ -291,6 +292,12 @@ export const sendMessage = mutation({
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
 
+        // Apply rate limiting per user
+        await rateLimiter.limit(ctx, "saveMessage", { 
+            key: userId, 
+            throws: true 
+        });
+
         // Check budget before starting
         const budgetStatus = await ctx.runQuery(internal.usage.getBudgetStatusInternal, {});
         if (!budgetStatus.canSend) {
@@ -480,6 +487,12 @@ export const startMultiModelGeneration = action({
         await authorizeThreadAccess(ctx, threadId);
         const userId = await getAuthUserId(ctx);
         if (!userId) throw new Error("Not authenticated");
+
+        // Apply rate limiting per user for multi-model generation (expensive operation)
+        await rateLimiter.limit(ctx, "startMultiModelGeneration", { 
+            key: userId, 
+            throws: true 
+        });
 
         // Check budget before starting
         const budgetStatus = await ctx.runQuery(internal.usage.getBudgetStatusInternal, {});
@@ -767,6 +780,13 @@ export const generateThreadTitle = internalAction({
     returns: v.null(),
     handler: async (ctx, { threadId, initialPrompt, userId }) => {
         try {
+            // Apply rate limiting per user for title generation
+            if (userId) {
+                await rateLimiter.limit(ctx, "generateThreadTitle", { 
+                    key: userId, 
+                    throws: true 
+                });
+            }
             const agent = summaryAgent;
             const { thread } = await agent.continueThread(ctx, { threadId, userId });
             const prompt = `Generate a concise, descriptive conversation title (max 20 characters). Use Title Case. Do not include quotes. Here is the initial prompt: "${initialPrompt}". Respond with only the title.`;

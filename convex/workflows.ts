@@ -5,6 +5,7 @@ import { createAgentWithModel, ModelId, AVAILABLE_MODELS, MODEL_ID_SCHEMA, summa
 import { saveMessage, getFile } from "@convex-dev/agent";
 import { internalMutation, internalAction } from "./_generated/server";
 import { z } from "zod";
+import rateLimiter from "./rateLimits";
 
 const RUN_STATUS = v.union(
   v.literal("initial"),
@@ -213,6 +214,8 @@ export const generateModelResponse = internalAction({
   returns: v.string(),
   handler: async (ctx, { threadId, modelId, prompt, userId, fileIds, masterMessageId }) => {
     try {
+      // Apply global rate limiting for LLM requests
+      await rateLimiter.limit(ctx, "globalLLMRequests", { throws: true });
       // Enforce file support for this model
       if (fileIds && fileIds.length > 0) {
         if (!AVAILABLE_MODELS[modelId as ModelId].fileSupport) {
@@ -306,6 +309,8 @@ export const generateDebateResponse = internalAction({
   returns: v.string(),
   handler: async (ctx, { threadId, modelId, otherResponses, userId, masterMessageId }) => {
     try {
+      // Apply global rate limiting for LLM requests
+      await rateLimiter.limit(ctx, "globalLLMRequests", { throws: true });
       // Construct the debate prompt using the research paper's methodology
       const debatePrompt = `
 **Remember the original question:**
@@ -380,6 +385,8 @@ export const generateSynthesisResponse = internalAction({
   returns: v.null(),
   handler: async (ctx, { masterThreadId, originalPrompt, masterModelId, allResponses, userId }) => {
     try {
+      // Apply global rate limiting for LLM requests
+      await rateLimiter.limit(ctx, "globalLLMRequests", { throws: true });
       const HIDDEN_PROMPT_PREFIX = "[HIDDEN_SYNTHESIS_PROMPT]::";
       // Update the synthesis prompt to reflect it's operating on refined answers
       const synthesisPrompt = `
