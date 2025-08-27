@@ -96,6 +96,7 @@ new chat ui
 routing? react router inside /chat? local first?
 resend? subscription? weekly usage?
 
+update stripe to live keys and add product details
 test everything
 
 launch videos

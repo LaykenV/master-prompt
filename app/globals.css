@@ -1323,6 +1323,7 @@
   .pricing-card {
     position: relative;
     border-radius: 0.9rem;
+    margin-top: .5rem;
     border: 1px solid hsl(var(--primary) / 0.28);
     background:
       linear-gradient(180deg, hsl(var(--primary) / 0.12) 0%, hsl(var(--primary) / 0.06) 100%),
@@ -1380,10 +1381,10 @@
       inset 0 1px 0 hsl(var(--primary) / 0.30);
   }
   .pricing-price { display: flex; align-items: baseline; gap: 0.25rem; margin-top: 0.25rem; }
-  .pricing-amount { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+  .pricing-amount { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;  }
   .pricing-period { font-size: 0.85rem; color: hsl(var(--muted-foreground)); }
   .pricing-features { margin: 0.5rem 0 0.9rem; display: grid; gap: 0.35rem; color: hsl(var(--muted-foreground)); }
-  .pricing-features li { position: relative; padding-left: 1.15rem;   }
+  .pricing-features li { position: relative; padding-left: 1.45rem;   }
   .pricing-features li::before {
     content: "✔";
     position: absolute;
