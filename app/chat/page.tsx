@@ -9,6 +9,7 @@ import { MessageInput } from "@/components/message-input";
 import { ModelId } from "@/convex/agent";
 import { toast } from "sonner";
 import { useSelfStatus } from "@/hooks/use-self-status";
+import { AgentSquadPreview } from "@/components/AgentSquadPreview";
 
 export default function NewChatPage() {
   const router = useRouter();
@@ -178,6 +179,19 @@ export default function NewChatPage() {
       void ensureUploadTask(file);
     }
   }, [files, ensureUploadTask]);
+  const scrollToInput = React.useCallback(() => {
+    try {
+      const form = document.getElementById("new-chat-input-form");
+      if (form) {
+        form.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => {
+          const el = form.querySelector("textarea, input") as HTMLTextAreaElement | HTMLInputElement | null;
+          el?.focus();
+        }, 250);
+      }
+    } catch {}
+  }, []);
+
 
   
 
@@ -271,14 +285,15 @@ export default function NewChatPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="mx-auto max-w-2xl space-y-6">
-            <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold text-foreground">Welcome to Master Prompt</h1>
-              <p className="text-muted-foreground">
-                Start a conversation with our AI assistant. Ask questions, get help, or just chat.
-              </p>
+      <div className="flex-1 overflow-auto flex items-center justify-center">
+        <div className="w-full max-w-5xl sm:max-w-5xl lg:max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <div className="lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2">
+              <AgentSquadPreview
+                models={multiModelSelection.secondary.length > 0 ? multiModelSelection : { master: selectedModel, secondary: [] }}
+                availableModels={availableModels || []}
+                onChooseModels={scrollToInput}
+              />
             </div>
 
             {!user && (
@@ -288,19 +303,6 @@ export default function NewChatPage() {
                 </p>
               </div>
             )}
-
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
-                <h3 className="font-semibold mb-2 text-card-foreground">💡 Ask anything</h3>
-                <p className="text-muted-foreground">Get help with code, writing, research, or creative projects.</p>
-              </div>
-              <div className="rounded-lg border border-border bg-card p-4 transition-colors hover:bg-card/80">
-                <h3 className="font-semibold mb-2 text-card-foreground">🚀 Get started quickly</h3>
-                <p className="text-muted-foreground">Simple conversations that adapt to your needs and context.</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -324,7 +326,7 @@ export default function NewChatPage() {
       )}
       <div className="p-4">
         <div className="mx-auto max-w-4xl">
-          <form onSubmit={onStart} className="space-y-4">
+          <form id="new-chat-input-form" onSubmit={onStart} className="space-y-4">
             <MessageInput
               value={input}
               onChange={(e) => setInput(e.target.value)}

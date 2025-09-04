@@ -85,7 +85,7 @@ track usage based on plan
 //reup only for lite and pro
 //light mode text color
 
-auth migration better auth? https://convex-better-auth.netlify.app/ or clerk
+auth migration better auth? https://convex-better-auth.netlify.app/ or clerk? or fix blink
 
 
 //account pages
@@ -95,14 +95,14 @@ landing page?
 new chat ui
 
 
-routing? react router inside /chat? local first?
-resend? subscription? weekly usage?
 
 update stripe to live keys and add product details
 test everything
 
 launch videos
 
+routing? react router inside /chat? local first?
+resend? subscription? weekly usage?
 
 add more toast errors
 

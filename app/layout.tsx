@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mind Mesh",
+  title: "MeshMind",
   description: "Many Models, One Mind.",
   icons: {
     icon: "/image.png",
