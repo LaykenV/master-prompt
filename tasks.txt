@@ -85,14 +85,14 @@ track usage based on plan
 //reup only for lite and pro
 //light mode text color
 
-auth migration better auth? https://convex-better-auth.netlify.app/ or clerk? or fix blink
+//auth migration better auth? https://convex-better-auth.netlify.app/ or clerk? or fix blink
 
 
 //account pages
 //success page ui
-create component with logos and beams
-landing page? 
-new chat ui
+//create component with logos and beams
+//landing page? 
+//new chat ui
 
 
 

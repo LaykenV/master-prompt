@@ -16,7 +16,6 @@ import ChatLayout from "@/app/chat/layout";
 
 export default function HomeChatPage() {
   const router = useRouter();
-  const user = useQuery(api.chat.getUser);
   const selfStatus = useSelfStatus();
   const availableModels = useQuery(api.chat.getAvailableModels);
   const createThread = useAction(api.chat.createThread);
@@ -199,25 +198,6 @@ export default function HomeChatPage() {
     } catch {}
   }, []);
 
-  // Resume pre-auth draft after sign-in
-  React.useEffect(() => {
-    try {
-      if (!isAuthenticated) return;
-      if (input.trim().length > 0) return;
-      const draftRaw = typeof window !== "undefined" ? window.sessionStorage.getItem("preAuthDraft") : null;
-      if (!draftRaw) return;
-      const draft = JSON.parse(draftRaw);
-      if (draft.selectedModel) setSelectedModel(draft.selectedModel);
-      if (draft.multiModelSelection) setMultiModelSelection(draft.multiModelSelection);
-      if (draft.content) setInput(draft.content);
-      window.sessionStorage.removeItem("preAuthDraft");
-      // Auto-send after resume
-      setTimeout(() => {
-        void onStart();
-      }, 50);
-    } catch {}
-  }, [isAuthenticated]);
-
   const onStart = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const content = input.trim();
@@ -318,6 +298,27 @@ export default function HomeChatPage() {
       setFiles(null);
     }
   };
+
+  // Resume pre-auth draft after sign-in
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  React.useEffect(() => {
+    try {
+      if (!isAuthenticated) return;
+      if (input.trim().length > 0) return;
+      const draftRaw = typeof window !== "undefined" ? window.sessionStorage.getItem("preAuthDraft") : null;
+      if (!draftRaw) return;
+      const draft = JSON.parse(draftRaw);
+      if (draft.selectedModel) setSelectedModel(draft.selectedModel);
+      if (draft.multiModelSelection) setMultiModelSelection(draft.multiModelSelection);
+      if (draft.content) setInput(draft.content);
+      window.sessionStorage.removeItem("preAuthDraft");
+      // Auto-send after resume
+      setTimeout(() => {
+        void onStart();
+      }, 50);
+    } catch {}
+  }, [isAuthenticated, input]);
+
 
   return (
     <ChatLayout>
