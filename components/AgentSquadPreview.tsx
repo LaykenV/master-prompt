@@ -210,7 +210,7 @@ export function AgentSquadPreview({
             <div className="relative z-10 mt-16 sm:mt-14 lg:mt-16 xl:mt-18 flex justify-center">
               <div ref={researchRef} className="relative">
                 {/* Decorative gradient glow to draw attention */}
-                <div aria-hidden className="pointer-events-none absolute inset-x-0 sm:-inset-x-12 lg:-inset-x-16 -top-12 h-24 bg-gradient-to-b from-primary/25 via-primary/10 to-transparent opacity-70 blur-2xl" />
+                <div aria-hidden className="pointer-events-none absolute -inset-8 sm:-inset-12 -top-12 h-24 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
 
                 <div className="section-card px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 text-center mx-2 sm:mx-0">
                   <div className="flex items-center justify-center gap-2 text-primary font-semibold text-sm sm:text-base tracking-tight">

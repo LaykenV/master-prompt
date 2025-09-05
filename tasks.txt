@@ -96,8 +96,10 @@ track usage based on plan
 
 
 
-update stripe to live keys and add product details
-test everything
+//update stripe to live keys and add product details
+//test everything
+
+clean up code
 
 launch videos
 smart marketing?
