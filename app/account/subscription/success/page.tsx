@@ -138,7 +138,7 @@ export default function SuccessPage() {
               ) : null}
 
               <div className="mt-6 grid gap-3 sm:flex sm:items-center sm:justify-between">
-                <Link href="/chat" className="btn-new-chat">
+                <Link href="/" className="btn-new-chat">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

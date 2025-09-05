@@ -48,7 +48,7 @@ export default function ChatLayout({
   const pathname = usePathname();
   const { isAuthenticated } = useConvexAuth();
   const router = useRouter();
-  const { signOut } = useAuthActions();
+  const { signOut, signIn } = useAuthActions();
   const user = useQuery(api.chat.getUser);
   const deleteThread = useAction(api.chat.deleteThread);
   const threads = useQuery(
@@ -122,7 +122,7 @@ export default function ChatLayout({
           </span>
         </div>
           <Link 
-            href="/chat"
+            href="/"
             className="btn-new-chat group-data-[collapsible=icon]:justify-center"
           >
             <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
@@ -137,8 +137,8 @@ export default function ChatLayout({
             </SidebarGroupLabel>
             <SidebarGroupContent className="chats-scroll max-h-[60vh]">
               {!isAuthenticated ? (
-                <div className="text-sm text-muted-foreground px-2 py-4">
-                  Sign in to start chatting
+                <div className="text-sm text-muted-foreground px-2 py-4 group-data-[collapsible=icon]:hidden">
+                  No chats yet
                 </div>
               ) : (
                 <SidebarMenu>
@@ -166,13 +166,13 @@ export default function ChatLayout({
           </SidebarGroup>
         </SidebarContent>
 
-        {user && (
-          <>
-            <SidebarFooter>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <ThemeToggle />
-                </SidebarMenuItem>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <ThemeToggle />
+            </SidebarMenuItem>
+            {user ? (
+              <>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
                     <Link 
@@ -193,10 +193,29 @@ export default function ChatLayout({
                     <span className="group-data-[collapsible=icon]:hidden">Sign Out</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarFooter>
-          </>
-        )}
+              </>
+            ) : (
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className="w-full justify-start gap-2 cursor-pointer p-0"
+                  onClick={() => void signIn("google")}
+                >
+                  <span className="w-full inline-flex items-center gap-2 btn-oauth btn-oauth--google">
+                    <span className="oauth-icon">
+                      <svg viewBox="0 0 533.5 544.3" width="14" height="14" aria-hidden="true">
+                        <path fill="#4285F4" d="M533.5 278.4c0-17.4-1.6-34.1-4.6-50.4H272.1v95.3h147.1c-6.3 34-25 62.7-53.4 82v68h86.2c50.3-46.3 81.5-114.6 81.5-194.9z"/>
+                        <path fill="#34A853" d="M272.1 544.3c72.7 0 133.7-24.1 178.2-65.7l-86.2-68c-23.9 16.1-54.6 25.6-92 25.6-70.6 0-130.4-47.7-151.9-111.7h-90.6v70.2c44.1 87.6 136.2 149.6 242.5 149.6z"/>
+                        <path fill="#FBBC04" d="M120.2 324.5c-10.7-31.9-10.7-66.3 0-98.2V156H29.6C-8.2 229.2-8.2 315.3 29.6 388.5l90.6-64z"/>
+                        <path fill="#EA4335" d="M272.1 107.7c39.6-.6 77.5 14.6 106.3 41.8l79.1-79.1C403.1 25.1 340.7 0 272.1 0 165.8 0 73.7 62 29.6 149.6l90.6 70.2c21.4-64 81.2-112.1 151.9-112.1z"/>
+                      </svg>
+                    </span>
+                    <span className="group-data-[collapsible=icon]:hidden">Sign in with Google</span>
+                  </span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
       
       <SidebarInset className="h-full flex flex-col brand-chat">
@@ -207,7 +226,7 @@ export default function ChatLayout({
           </div>
           <div>
             <Link 
-              href="/chat"
+              href="/"
               className="btn-new-chat w-10 h-10 p-0 flex items-center justify-center"
             >
               +

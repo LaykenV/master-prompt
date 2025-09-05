@@ -4,13 +4,10 @@ import {
   nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
 
-const isHomePage = createRouteMatcher(["/"]);
-const isProtectedRoute = createRouteMatcher(["/server", "/chat", "/account", "/account/usage", "/account/subscription", "/account/subscription/success", "/chat/:threadId"]);
+const isProtectedRoute = createRouteMatcher(["/server", "/account", "/account/usage", "/account/subscription", "/account/subscription/success", "/chat/:threadId"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  if (isHomePage(request) && (await convexAuth.isAuthenticated())) {
-    return nextjsMiddlewareRedirect(request, "/chat");
-  }
+  // Home page ("/") is always public now. Only protect account and thread routes.
   if (isProtectedRoute(request) && !(await convexAuth.isAuthenticated())) {
     return nextjsMiddlewareRedirect(request, "/");
   }

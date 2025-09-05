@@ -50,6 +50,10 @@ Usage guidance:
 - **Generic variants**: `btn-primary`, `btn-secondary`, `btn-destructive`
 - **Prominent CTA**: `btn-new-chat` (full), `btn-new-chat-compact` (compact). Compact is also used for elevated outline CTAs
 - **Pricing CTAs**: `btn-pricing`, plus variants `btn-pricing-primary`, `btn-pricing-featured`, `btn-pricing-outline`, `btn-pricing-current`
+- **OAuth button**: `btn-oauth` with brand variant `btn-oauth--google` and helper `oauth-icon`
+  - Responsive, accessible, high-contrast button suitable for sidebar and dialogs
+  - Light mode: luminous layered gradient with subtle brand tint; Dark mode: elevated dark surface
+  - Always include the Google mark inside `oauth-icon` for crisp framing across themes
 
 ### Badges and pills
 - **Primary badge**: `badge-primary` (inline, on-brand)
@@ -68,6 +72,8 @@ Usage guidance:
 ### Modals
 - **Overlay**: `modal-overlay` with blur + fade-in
 - **Card**: `modal-card` with pop-in animation; `modal-close` control
+  - Auth dialog uses `modal-card` with header, description, and OAuth button
+  - Mobile-friendly padding: `p-4` on xs, `p-6` on sm+
 
 ### Chat primitives
 - **User message**: `user-bubble` (light elevated surface)
