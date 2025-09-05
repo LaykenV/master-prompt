@@ -129,7 +129,7 @@ export const createCheckoutSession = action({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `https://www.meshmind.chat/account/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `https://www.meshmind.chat`,
+      cancel_url: `https://www.meshmind.chat/account/subscription`,
     });
     if (!session.url) throw new Error("Stripe did not return a checkout URL");
     return { url: session.url };
@@ -185,7 +185,7 @@ export const createCustomerPortalSession = action({
     }
     const session = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `https://www.meshmind.chat/account`,
+      return_url: `https://www.meshmind.chat/account/subscription`,
     });
     if (!session.url) throw new Error("Stripe did not return a customer portal URL");
     return { url: session.url };

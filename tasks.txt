@@ -100,18 +100,10 @@ update stripe to live keys and add product details
 test everything
 
 launch videos
+smart marketing?
+get a user
 
-routing? react router inside /chat? local first?
-resend? subscription? weekly usage?
-
-add more toast errors
-
-
-img gen?
-
-context cli creates md files
-
-make template with stripe
+make template with stripe, theme toggle, convex, b/a
 update portfolio / resume
 
 agency?
