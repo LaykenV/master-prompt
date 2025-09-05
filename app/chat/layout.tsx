@@ -83,7 +83,7 @@ export default function ChatLayout({
     try {
       await deleteThread({ threadId: confirmDelete.threadId });
       if (activeThreadId === confirmDelete.threadId) {
-        router.push("/chat");
+        router.push("/");
       }
       toast.success("Chat deleted");
       setConfirmDelete(null);

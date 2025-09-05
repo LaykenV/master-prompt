@@ -18,7 +18,7 @@ export default function SettingsPage() {
     if (returnChat) {
       router.push(`/chat/${returnChat}`);
     } else {
-      router.push("/chat");
+      router.push("/");
     }
   };
 

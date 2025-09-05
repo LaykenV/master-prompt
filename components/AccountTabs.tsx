@@ -33,7 +33,7 @@ export default function AccountTabs() {
   return (
     <div className="flex items-center justify-center w-full px-2">
       <nav className="route-tabs floating-header max-w-full" aria-label="Account sections">
-        <Link href={returnChat ? `/chat/${returnChat}` : "/chat"} className="route-tab text-xs sm:text-sm">
+        <Link href={returnChat ? `/chat/${returnChat}` : "/"} className="route-tab text-xs sm:text-sm">
           <ArrowLeft className="h-4 w-4 flex-shrink-0" />
           <span className="truncate hidden sm:inline">Chat</span>
         </Link>
