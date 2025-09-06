@@ -40,6 +40,7 @@ import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useThreadLoadingState } from "@/hooks/use-thread-loading-state";
+import { useSelfStatus } from "@/hooks/use-self-status";
 export default function ChatLayout({
   children,
 }: {
@@ -55,6 +56,7 @@ export default function ChatLayout({
     api.chat.getThreads,
     isAuthenticated ? { paginationOpts: { numItems: 50, cursor: null } } : "skip"
   );
+  const selfStatus = useSelfStatus();
 
   // Global generating thread ids for sidebar spinners
   const generatingIds = useQuery(
@@ -74,6 +76,7 @@ export default function ChatLayout({
     const match = pathname.match(/\/chat\/(.+)$/);
     return match ? match[1] : null;
   }, [pathname]);
+  const isHomePage = pathname === "/";
 
   const openDeleteDialog = (thread: {
     _id: string;
@@ -232,6 +235,16 @@ export default function ChatLayout({
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
           </div>
+          {isHomePage && selfStatus?.isAuthenticated && selfStatus && !selfStatus.canSend && (
+            <div className="flex-1 px-2">
+              <Link
+                href="/account/usage"
+                className="block rounded-md border border-destructive/20 bg-destructive/10 px-2 py-1 text-center text-[11px] font-medium text-destructive"
+              >
+                Weekly limit reached
+              </Link>
+            </div>
+          )}
           <div>
             <Link 
               href="/"

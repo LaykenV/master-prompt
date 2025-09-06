@@ -106,6 +106,7 @@ threads spinning if not active
 //copy on corner of md 
 //mobile side scroll
 
+add credit limit to apis
 launch videos
 smart marketing?
 get a user

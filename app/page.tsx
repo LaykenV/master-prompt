@@ -338,7 +338,7 @@ export default function HomeChatPage() {
         </div>
 
         {selfStatus?.isAuthenticated && selfStatus && !selfStatus.canSend && (
-          <div className="p-4 pb-0">
+          <div className="hidden md:block p-4 pb-0">
             <div className="mx-auto max-w-4xl">
               <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
                 <p className="text-sm text-destructive">
