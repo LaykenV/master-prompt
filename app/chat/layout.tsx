@@ -56,6 +56,13 @@ export default function ChatLayout({
     isAuthenticated ? { paginationOpts: { numItems: 50, cursor: null } } : "skip"
   );
 
+  // Global generating thread ids for sidebar spinners
+  const generatingIds = useQuery(
+    api.chat.getGeneratingThreadIds,
+    isAuthenticated ? {} : "skip"
+  );
+  const generatingSet = useMemo(() => new Set(generatingIds ?? []), [generatingIds]);
+
   const [confirmDelete, setConfirmDelete] = useState<{
     threadId: string;
     label: string;
@@ -156,6 +163,7 @@ export default function ChatLayout({
                         key={thread._id}
                         thread={thread}
                         isActive={activeThreadId === thread._id}
+                        generatingSet={generatingSet}
                         onDelete={() => openDeleteDialog(thread)}
                       />
                     ))
@@ -305,14 +313,19 @@ export default function ChatLayout({
 function ThreadItem({ 
   thread, 
   isActive, 
+  generatingSet,
   onDelete 
 }: { 
   thread: { _id: string; title?: string | null; summary?: string | null };
   isActive: boolean;
+  generatingSet: Set<string>;
   onDelete: () => void;
 }) {
   const { isMobile, setOpenMobile } = useSidebar();
-  const isLoading = useThreadLoadingState(thread._id, isActive);
+  // Local loading for active thread, global for inactive
+  const localLoading = useThreadLoadingState(thread._id, isActive);
+  const globalLoading = generatingSet.has(thread._id);
+  const isLoading = isActive ? (localLoading || globalLoading) : globalLoading;
   const displayName = thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`;
 
   return (

@@ -101,6 +101,11 @@ track usage based on plan
 
 clean up code
 
+//'read more' link to research
+threads spinning if not active
+//copy on corner of md 
+//mobile side scroll
+
 launch videos
 smart marketing?
 get a user

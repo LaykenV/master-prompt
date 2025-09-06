@@ -439,6 +439,10 @@ Synthesize these peer-reviewed conclusions into a single, comprehensive, and aut
       });
       
       return null;
+    } finally {
+      try {
+        await ctx.runMutation(internal.chat.updateThreadActivity, { threadId: masterThreadId, userId, delta: -1 });
+      } catch {}
     }
   },
 });

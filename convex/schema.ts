@@ -132,4 +132,15 @@ export default defineSchema({
     monthStartMs: v.number(),
     reupsUsed: v.number(),
   }).index("by_user_month", ["userId", "monthStartMs"]),
+
+  // Per-thread activity to drive global loading spinners in the UI
+  threadActivities: defineTable({
+    threadId: v.string(),
+    userId: v.id("users"),
+    activeCount: v.number(),
+    isGenerating: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_threadId", ["threadId"]) // used for upsert and .unique()
+    .index("by_userId_and_isGenerating", ["userId", "isGenerating"]),
 });

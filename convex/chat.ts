@@ -17,6 +17,52 @@ import {
 import { workflow } from "./workflows";
 import rateLimiter from "./rateLimits";
 
+// Track per-thread generation activity for global loading indicators
+export const updateThreadActivity = internalMutation({
+    args: { threadId: v.string(), userId: v.id("users"), delta: v.number() },
+    returns: v.null(),
+    handler: async (ctx, { threadId, userId, delta }) => {
+        const existing = await ctx.db
+            .query("threadActivities")
+            .withIndex("by_threadId", (q) => q.eq("threadId", threadId))
+            .unique();
+        const now = Date.now();
+        if (!existing) {
+            const activeCount = Math.max(0, delta);
+            await ctx.db.insert("threadActivities", {
+                threadId,
+                userId,
+                activeCount,
+                isGenerating: activeCount > 0,
+                updatedAt: now,
+            });
+            return null;
+        }
+        const next = Math.max(0, (existing.activeCount ?? 0) + delta);
+        await ctx.db.patch(existing._id, {
+            activeCount: next,
+            isGenerating: next > 0,
+            updatedAt: now,
+        });
+        return null;
+    },
+});
+
+// Public query: list generating thread ids for current user
+export const getGeneratingThreadIds = query({
+    args: {},
+    returns: v.array(v.string()),
+    handler: async (ctx) => {
+        const userId = await getAuthUserId(ctx);
+        if (!userId) return [];
+        const rows = await ctx.db
+            .query("threadActivities")
+            .withIndex("by_userId_and_isGenerating", (q) => q.eq("userId", userId).eq("isGenerating", true))
+            .collect();
+        return rows.map((r) => r.threadId);
+    },
+});
+
 // Generate a short-lived upload URL for uploading large files directly to Convex storage
 export const generateUploadUrl = mutation({
     args: {},
@@ -253,12 +299,18 @@ export const saveInitialMessage = internalMutation({
                 metadata: { fileIds }, // Track file usage
             });
 
-            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-                threadId,
-                promptMessageId: messageId,
-                modelId,
-                userId,
-            });
+            await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: +1 });
+            try {
+                await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                    threadId,
+                    promptMessageId: messageId,
+                    modelId,
+                    userId,
+                });
+            } catch (err) {
+                await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: -1 });
+                throw err;
+            }
         } else {
             // Regular text-only message
             const { messageId } = await saveMessage(ctx, components.agent, {
@@ -266,12 +318,18 @@ export const saveInitialMessage = internalMutation({
                 userId,
                 prompt,
             });
-            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-                threadId,
-                promptMessageId: messageId,
-                modelId,
-                userId,
-            });
+            await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: +1 });
+            try {
+                await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                    threadId,
+                    promptMessageId: messageId,
+                    modelId,
+                    userId,
+                });
+            } catch (err) {
+                await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: -1 });
+                throw err;
+            }
         }
         
         return null;
@@ -349,11 +407,18 @@ export const sendMessage = mutation({
                 metadata: { fileIds }, // Track file usage
             });
 
-            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-                threadId,
-                promptMessageId: messageId,
-                modelId: activeModelId,
-            });
+            await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: +1 });
+            try {
+                await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                    threadId,
+                    promptMessageId: messageId,
+                    modelId: activeModelId,
+                    userId,
+                });
+            } catch (err) {
+                await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: -1 });
+                throw err;
+            }
         } else {
             // Regular text-only message
             const { messageId } = await saveMessage(ctx, components.agent, {
@@ -361,12 +426,18 @@ export const sendMessage = mutation({
                 userId,
                 prompt,
             });
-
-            await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
-                threadId,
-                promptMessageId: messageId,
-                modelId: activeModelId,
-            });
+            await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: +1 });
+            try {
+                await ctx.scheduler.runAfter(0, internal.chat.generateResponseStreamingAsync, {
+                    threadId,
+                    promptMessageId: messageId,
+                    modelId: activeModelId,
+                    userId,
+                });
+            } catch (err) {
+                await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: -1 });
+                throw err;
+            }
         }
         
         return null;
@@ -416,6 +487,12 @@ export const generateResponseStreamingAsync = internalAction({
             return null;
         } catch (error) {
             console.error("Error in generateResponseStreamingAsync", error);
+        } finally {
+            if (userId) {
+                try {
+                    await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: -1 });
+                } catch {}
+            }
         }
     },
 });
@@ -545,6 +622,9 @@ export const startMultiModelGeneration = action({
             });
             messageId = result.messageId;
         }
+
+        // Increment activity for the master thread until synthesis completes
+        await ctx.runMutation(internal.chat.updateThreadActivity, { threadId, userId, delta: +1 });
 
         // Start the multi-model generation workflow
         const workflowId: string = await workflow.start(

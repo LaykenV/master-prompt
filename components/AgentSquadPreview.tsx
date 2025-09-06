@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState } from "react";
 import { AnimatedBeam } from "@/components/magicui/animated-beam";
-import { ChevronRight, MessageSquare, GitBranch, Lightbulb, Target, Users, Plus } from "lucide-react";
+import { ChevronRight, MessageSquare, GitBranch, Lightbulb, Target, Users, Plus, ExternalLink } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getModelLogo, getProviderLogo, ModelId } from "@/convex/agent";
 
@@ -210,7 +210,7 @@ export function AgentSquadPreview({
             <div className="relative z-10 mt-16 sm:mt-14 lg:mt-16 xl:mt-18 flex justify-center">
               <div ref={researchRef} className="relative">
                 {/* Decorative gradient glow to draw attention */}
-                <div aria-hidden className="pointer-events-none absolute -inset-8 sm:-inset-12 -top-12 h-24 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 sm:-left-12 sm:-right-12 -top-12 h-24 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
 
                 <div className="section-card px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 text-center mx-2 sm:mx-0">
                   <div className="flex items-center justify-center gap-2 text-primary font-semibold text-sm sm:text-base tracking-tight">
@@ -219,6 +219,15 @@ export function AgentSquadPreview({
                   </div>
                   <div className="mt-1 text-center text-[11px] sm:text-sm text-muted-foreground max-w-[720px] mx-auto">
                     Models develop individual thoughts through a research‑backed Socratic seminar and debate one another to improve answer quality.
+                    <br />
+                    <a 
+                      href="https://composable-models.github.io/llm_debate/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:text-primary/80 transition-colors text-xs mt-1 underline underline-offset-2"
+                    >
+                      Read the research paper <ExternalLink className="h-3 w-3" />
+                    </a>
                   </div>
 
                   {/* Steps – mobile grid */}

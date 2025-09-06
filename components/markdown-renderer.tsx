@@ -106,7 +106,7 @@ const CodeBlock = ({
       : childrenTakeAllStringContents(children)
 
   const preClass = cn(
-    "overflow-x-scroll rounded-md border bg-background/50 p-4 font-mono text-sm [scrollbar-width:none]",
+    "relative overflow-x-scroll rounded-md border bg-background/50 p-4 pr-14 font-mono text-sm [scrollbar-width:none]",
     className
   )
 
@@ -116,7 +116,7 @@ const CodeBlock = ({
         {code}
       </HighlightedPre>
 
-      <div className="invisible absolute right-2 top-2 flex space-x-1 rounded-lg p-1 opacity-0 transition-all duration-200 group-hover/code:visible group-hover/code:opacity-100">
+      <div className="absolute right-2 top-2 z-20 flex space-x-1 rounded-md border border-foreground/20 bg-background/90 p-1 shadow-sm transition-all duration-200 visible opacity-100 md:invisible md:opacity-0 md:group-hover/code:visible md:group-hover/code:opacity-100">
         <CopyButton content={code} />
       </div>
     </div>
