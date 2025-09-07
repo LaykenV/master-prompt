@@ -322,7 +322,7 @@ export default function HomeChatPage() {
 
   return (
     <ChatLayout>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col relative">
         <div className="flex-1 overflow-auto flex items-center justify-center">
           <div className="w-full max-w-5xl sm:max-w-5xl lg:max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="space-y-6">
@@ -337,10 +337,14 @@ export default function HomeChatPage() {
           </div>
         </div>
 
+        {/* Floating weekly limit banner (overlay, does not consume layout space) */}
         {selfStatus?.isAuthenticated && selfStatus && !selfStatus.canSend && (
-          <div className="hidden md:block p-4 pb-0">
-            <div className="mx-auto max-w-4xl">
-              <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
+          <div
+            className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-3"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+          >
+            <div className="pointer-events-auto w-full max-w-4xl">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 backdrop-blur-md p-3 text-center shadow-md">
                 <p className="text-sm text-destructive">
                   Weekly limit reached. {selfStatus.subscription ? (
                     <Link href="/account/usage" className="underline font-medium">View Usage</Link>

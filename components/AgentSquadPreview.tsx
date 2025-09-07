@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState } from "react";
 import { AnimatedBeam } from "@/components/magicui/animated-beam";
-import { ChevronRight, MessageSquare, GitBranch, Lightbulb, Target, Users, Plus, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronDown, MessageSquare, GitBranch, Lightbulb, Target, Users, Plus, ExternalLink } from "lucide-react";
 import { useTheme } from "next-themes";
 import { getModelLogo, getProviderLogo, ModelId } from "@/convex/agent";
 
@@ -41,6 +41,9 @@ export function AgentSquadPreview({
   const finalTopAnchorRef = useRef<HTMLDivElement>(null);
   const sec1BottomAnchorRef = useRef<HTMLDivElement>(null);
   const sec2BottomAnchorRef = useRef<HTMLDivElement>(null);
+  // Mobile combined section anchors
+  const combinedRef = useRef<HTMLDivElement>(null);
+  const combinedTopAnchorRef = useRef<HTMLDivElement>(null);
   // Research & Debate anchors
   const researchRef = useRef<HTMLDivElement>(null);
   const researchTopAnchorRef = useRef<HTMLDivElement>(null);
@@ -206,8 +209,8 @@ export function AgentSquadPreview({
               })}
             </div>
 
-            {/* Middle: Research & Debate node */}
-            <div className="relative z-10 mt-16 sm:mt-14 lg:mt-16 xl:mt-18 flex justify-center">
+            {/* Middle: Research & Debate node (desktop/tablet only) */}
+            <div className="hidden sm:flex relative z-10 mt-16 lg:mt-16 xl:mt-18 justify-center">
               <div ref={researchRef} className="relative">
                 {/* Decorative gradient glow to draw attention */}
                 <div aria-hidden className="pointer-events-none absolute inset-x-0 sm:-left-12 sm:-right-12 -top-12 h-24 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
@@ -254,9 +257,58 @@ export function AgentSquadPreview({
                 <div ref={researchBottomAnchorRef} className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1 h-0 w-0" />
               </div>
             </div>
+            
+            {/* Mobile: Combined Research/Debate + Final insight */}
+            <div className="sm:hidden relative z-10 mt-12 flex justify-center">
+              <div ref={combinedRef} className="relative">
+                {/* Decorative gradient glow to draw attention */}
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-10 h-20 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
+                <div className="section-card px-3 py-4">
+                  <div className="flex items-center justify-center gap-2 text-primary font-semibold text-sm tracking-tight">
+                    <Lightbulb className="h-4 w-4" />
+                    Individual Thoughts & Debate
+                  </div>
+                  <div className="mt-1 text-center text-[11px] text-muted-foreground mx-auto">
+                    Models think individually, discuss Socratically, and converge on a better answer.
+                    <br />
+                    <a 
+                      href="https://composable-models.github.io/llm_debate/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:text-primary/80 transition-colors text-xs mt-1 underline underline-offset-2"
+                    >
+                      Read the research paper <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
 
-            {/* Bottom: final nucleus centered under the row */}
-            <div className="relative z-10 mt-12 sm:mt-12 lg:mt-16 xl:mt-20 flex justify-center">
+                  {/* Steps – compact grid for mobile */}
+                  <div className="mt-3 grid grid-cols-2 gap-1.5 justify-items-center px-1">
+                    <span className="pill flex items-center gap-1.5 text-[11px]"><Lightbulb className="h-3.5 w-3.5" /> Individual Thoughts</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px]"><MessageSquare className="h-3.5 w-3.5" /> Socratic seminar</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px]"><GitBranch className="h-3.5 w-3.5" /> Counterpoints</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px]"><Target className="h-3.5 w-3.5" /> Convergence</span>
+                  </div>
+
+                  {/* Flow indicator */}
+                  <div className="mt-3 flex items-center justify-center gap-2 text-muted-foreground">
+                    <div className="h-px w-8 bg-border" />
+                    <ChevronDown className="h-4 w-4" aria-hidden />
+                    <div className="h-px w-8 bg-border" />
+                  </div>
+
+                  {/* Final insight summary inline */}
+                  <div className="mt-4 text-center">
+                    <div className="final-compact-title justify-center"><Users className="h-4 w-4 text-primary" /> Final insight</div>
+                    <div className="final-compact-body text-xs text-muted-foreground">Coordinated result from your selected models.</div>
+                  </div>
+                </div>
+                {/* Top anchor for beam connection */}
+                <div ref={combinedTopAnchorRef} className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1 h-0 w-0" />
+              </div>
+            </div>
+
+            {/* Bottom: final nucleus centered under the row (desktop/tablet only) */}
+            <div className="hidden sm:flex relative z-10 mt-12 lg:mt-16 xl:mt-20 justify-center">
               <div ref={finalRef} className="relative">
                 <div className="final-compact-card">
                   <div className="final-compact-title"><Users className="h-4 w-4 text-primary" /> Final insight</div>
@@ -267,33 +319,58 @@ export function AgentSquadPreview({
               </div>
             </div>
 
-            {/* Beams overlay (visible on all sizes) */}
+            {/* Beams overlay */}
             <div aria-hidden className="pointer-events-none absolute inset-0 z-0 beams-overlay">
-              {/* From each visible node to Research & Debate */}
-              <AnimatedBeam
-                key={`m-r`}
-                containerRef={containerRef}
-                fromRef={masterBottomAnchorRef}
-                toRef={researchTopAnchorRef}
-                curvature={2}
-                pathOpacity={0.22}
-                pathWidth={2}
-                pathColor="hsl(var(--primary))"
-                gradientStartColor="#34d399"
-                gradientStopColor="#60a5fa"
-                duration={4.5}
-                delay={0.05}
-                showNodes
-                nodeRadius={2}
-                glow
-                glowOpacity={0.28}
-                revealProgress={reveal}
-              />
-              {isMulti && secondaries.map((_, idx) => (
+              {/* Mobile: from all three slots to combined insight */}
+              <div className="sm:hidden">
                 <AnimatedBeam
-                  key={`s-r-${idx}`}
+                  key={`m-c`}
                   containerRef={containerRef}
-                  fromRef={secondaryBottomAnchorRefs[idx]}
+                  fromRef={masterBottomAnchorRef}
+                  toRef={combinedTopAnchorRef}
+                  curvature={2}
+                  pathOpacity={0.22}
+                  pathWidth={2}
+                  pathColor="hsl(var(--primary))"
+                  gradientStartColor="#34d399"
+                  gradientStopColor="#60a5fa"
+                  duration={4.5}
+                  delay={0.05}
+                  showNodes
+                  nodeRadius={2}
+                  glow
+                  glowOpacity={0.28}
+                  revealProgress={reveal}
+                />
+                {[0,1].map((idx) => (
+                  <AnimatedBeam
+                    key={`s-c-${idx}`}
+                    containerRef={containerRef}
+                    fromRef={secondaryBottomAnchorRefs[idx]}
+                    toRef={combinedTopAnchorRef}
+                    curvature={2}
+                    pathOpacity={0.22}
+                    pathWidth={2}
+                    pathColor="hsl(var(--primary))"
+                    gradientStartColor="#34d399"
+                    gradientStopColor="#60a5fa"
+                    duration={4.5}
+                    delay={0.1 + idx * 0.05}
+                    showNodes
+                    nodeRadius={2}
+                    glow
+                    glowOpacity={0.28}
+                    revealProgress={reveal}
+                  />
+                ))}
+              </div>
+
+              {/* Desktop/tablet: from nodes to Research & Debate, then to Final */}
+              <div className="hidden sm:block">
+                <AnimatedBeam
+                  key={`m-r`}
+                  containerRef={containerRef}
+                  fromRef={masterBottomAnchorRef}
                   toRef={researchTopAnchorRef}
                   curvature={2}
                   pathOpacity={0.22}
@@ -302,35 +379,54 @@ export function AgentSquadPreview({
                   gradientStartColor="#34d399"
                   gradientStopColor="#60a5fa"
                   duration={4.5}
-                  delay={0.1 + idx * 0.05}
+                  delay={0.05}
                   showNodes
                   nodeRadius={2}
                   glow
                   glowOpacity={0.28}
                   revealProgress={reveal}
                 />
-              ))}
-
-              {/* From Research & Debate to Final insight */}
-              <AnimatedBeam
-                key={`r-f`}
-                containerRef={containerRef}
-                fromRef={researchBottomAnchorRef}
-                toRef={finalTopAnchorRef}
-                curvature={2}
-                pathOpacity={0.25}
-                pathWidth={2.5}
-                pathColor="hsl(var(--primary))"
-                gradientStartColor="#34d399"
-                gradientStopColor="#60a5fa"
-                duration={4.5}
-                delay={0.15}
-                showNodes
-                nodeRadius={2}
-                glow
-                glowOpacity={0.3}
-                revealProgress={reveal}
-              />
+                {secondaries.map((_, idx) => (
+                  <AnimatedBeam
+                    key={`s-r-${idx}`}
+                    containerRef={containerRef}
+                    fromRef={secondaryBottomAnchorRefs[idx]}
+                    toRef={researchTopAnchorRef}
+                    curvature={2}
+                    pathOpacity={0.22}
+                    pathWidth={2}
+                    pathColor="hsl(var(--primary))"
+                    gradientStartColor="#34d399"
+                    gradientStopColor="#60a5fa"
+                    duration={4.5}
+                    delay={0.1 + idx * 0.05}
+                    showNodes
+                    nodeRadius={2}
+                    glow
+                    glowOpacity={0.28}
+                    revealProgress={reveal}
+                  />
+                ))}
+                <AnimatedBeam
+                  key={`r-f`}
+                  containerRef={containerRef}
+                  fromRef={researchBottomAnchorRef}
+                  toRef={finalTopAnchorRef}
+                  curvature={2}
+                  pathOpacity={0.25}
+                  pathWidth={2.5}
+                  pathColor="hsl(var(--primary))"
+                  gradientStartColor="#34d399"
+                  gradientStopColor="#60a5fa"
+                  duration={4.5}
+                  delay={0.15}
+                  showNodes
+                  nodeRadius={2}
+                  glow
+                  glowOpacity={0.3}
+                  revealProgress={reveal}
+                />
+              </div>
             </div>
           </div>
         </div>

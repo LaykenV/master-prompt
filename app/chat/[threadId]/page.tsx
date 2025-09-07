@@ -305,14 +305,18 @@ export default function ThreadPage() {
 
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col relative">
       <div className="flex-1 overflow-hidden">
         <ChatMessages ref={messagesRef} messages={messages} pendingFromRedirect={pendingFromRedirect} />
       </div>
+      {/* Floating weekly limit banner (overlay, does not consume layout space) */}
       {user && selfStatus && !selfStatus.canSend && (
-        <div className="p-4 pb-0">
-          <div className="mx-auto max-w-4xl">
-            <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-center">
+        <div
+          className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-3"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+        >
+          <div className="pointer-events-auto w-full max-w-4xl">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 backdrop-blur-md p-3 text-center shadow-md">
               <p className="text-sm text-destructive">
                 Weekly limit reached. {selfStatus.subscription ? (
                   <Link href={`/account/usage?returnChat=${threadId}`} className="underline font-medium">View Usage</Link>
