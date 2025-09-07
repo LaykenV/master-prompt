@@ -3,6 +3,8 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
 import { useConvexAuth } from "convex/react";
 import { useMemo, useState, useEffect } from "react";
 
+const LOADING_TIMEOUT_MS = 45000;
+
 /**
  * Hook to determine if a thread is currently generating/streaming messages
  * Shows loading for threads with pending redirects or if it's the active thread with pending messages
@@ -58,7 +60,7 @@ export function useThreadLoadingState(threadId: string, isActive: boolean = fals
     { initialNumItems: 10, stream: true }
   );
 
-  const isLoading = useMemo(() => {
+  const baseIsLoading = useMemo(() => {
     // If there's a pending message from redirect, always show loading
     if (hasPendingFromRedirect) return true;
 
@@ -98,5 +100,33 @@ export function useThreadLoadingState(threadId: string, isActive: boolean = fals
     return shouldShowPendingAssistant;
   }, [messages.isLoading, messages.results, hasPendingFromRedirect, isActive]);
 
-  return isLoading;
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    if (baseIsLoading) {
+      setTimedOut(false);
+      timeoutId = window.setTimeout(() => {
+        setTimedOut(true);
+        // Best-effort: clear any stuck pending redirect flag
+        try {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.removeItem(`pendingMessage:${threadId}`);
+            window.dispatchEvent(
+              new CustomEvent("pendingMessageChange", { detail: { threadId } })
+            );
+          }
+        } catch {}
+      }, LOADING_TIMEOUT_MS);
+    } else {
+      setTimedOut(false);
+    }
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [baseIsLoading, threadId]);
+
+  return baseIsLoading && !timedOut;
 }

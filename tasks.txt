@@ -107,8 +107,14 @@ threads spinning if not active
 //mobile side scroll
 
 add credit limit to apis
-launch videos
-smart marketing?
+
+SVG comparison
+launch video
+    based on peer reviewed research
+    only place to leverage multiple models together
+    best pricing
+    video showing multimodel runs with nice video
+    openai best at this, gemini best at this, etc
 get a user
 
 make template with stripe, theme toggle, convex, b/a

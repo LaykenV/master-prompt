@@ -62,12 +62,14 @@ export default function ChatLayout({
     isAuthenticated ? {} : "skip"
   );
   const generatingSet = useMemo(() => new Set(generatingIds ?? []), [generatingIds]);
+  const DATA_LOADING_TIMEOUT_MS = 15000;
 
   const [confirmDelete, setConfirmDelete] = useState<{
     threadId: string;
     label: string;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [threadsTimedOut, setThreadsTimedOut] = useState(false);
 
   const activeThreadId = useMemo(() => {
     if (!pathname) return null;
@@ -112,6 +114,18 @@ export default function ChatLayout({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [confirmDelete, isDeleting]);
 
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    if (isAuthenticated && threads === undefined) {
+      timeoutId = setTimeout(() => setThreadsTimedOut(true), DATA_LOADING_TIMEOUT_MS);
+    } else {
+      setThreadsTimedOut(false);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [threads, isAuthenticated]);
+
   return (
     <SidebarProvider className="h-full">
       <Toaster position="top-center" richColors />
@@ -150,9 +164,15 @@ export default function ChatLayout({
               ) : (
                 <SidebarMenu>
                   {threads === undefined ? (
-                    <div className="text-sm text-muted-foreground px-2 py-4" role="status" aria-label="Loading chats">
-                      Loading chats...
-                    </div>
+                    threadsTimedOut ? (
+                      <div className="text-sm text-muted-foreground px-2 py-4">
+                        Unable to load chats. Please try again.
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground px-2 py-4" role="status" aria-label="Loading chats">
+                        Loading chats...
+                      </div>
+                    )
                   ) : !threads || threads.length === 0 ? (
                     <div className="text-sm text-muted-foreground px-2 py-4">
                       No chats yet
@@ -325,7 +345,21 @@ function ThreadItem({
   // Local loading for active thread, global for inactive
   const localLoading = useThreadLoadingState(thread._id, isActive);
   const globalLoading = generatingSet.has(thread._id);
-  const isLoading = isActive ? (localLoading || globalLoading) : globalLoading;
+  const [globalTimedOut, setGlobalTimedOut] = useState(false);
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    if (globalLoading) {
+      setGlobalTimedOut(false);
+      timeoutId = setTimeout(() => setGlobalTimedOut(true), 45000);
+    } else {
+      setGlobalTimedOut(false);
+    }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [globalLoading]);
+  const effectiveGlobalLoading = globalLoading && !globalTimedOut;
+  const isLoading = isActive ? (localLoading || effectiveGlobalLoading) : effectiveGlobalLoading;
   const displayName = thread.title ?? thread.summary ?? `Chat ${thread._id.slice(-6)}`;
 
   return (

@@ -698,6 +698,25 @@ function SidebarMenuSubButton({
   )
 }
 
+function useLoadingTimeout(loading: boolean, timeoutMs: number = 45000) {
+  const [timedOut, setTimedOut] = React.useState(false)
+
+  React.useEffect(() => {
+    let id: ReturnType<typeof setTimeout> | null = null
+    if (loading) {
+      setTimedOut(false)
+      id = setTimeout(() => setTimedOut(true), timeoutMs)
+    } else {
+      setTimedOut(false)
+    }
+    return () => {
+      if (id) clearTimeout(id)
+    }
+  }, [loading, timeoutMs])
+
+  return loading && !timedOut
+}
+
 export {
   Sidebar,
   SidebarContent,
@@ -723,4 +742,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  useLoadingTimeout,
 }
