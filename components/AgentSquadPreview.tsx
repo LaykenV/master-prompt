@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import { AnimatedBeam } from "@/components/magicui/animated-beam";
 import { ChevronRight, ChevronDown, MessageSquare, GitBranch, Lightbulb, Target, Users, Plus, ExternalLink } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -66,7 +67,16 @@ export function AgentSquadPreview({
     })();
     const isDark = (resolvedTheme ?? "dark") === "dark";
     const src = mounted ? (isDark ? logo.dark : logo.light) : logo.dark;
-    return <img src={src} alt={logo.alt} className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8" />;
+    return (
+      <Image
+        src={src}
+        alt={logo.alt}
+        width={24}
+        height={24}
+        className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6"
+        priority={false}
+      />
+    );
   };
 
   const masterInfo = getModelInfo(models.master);
@@ -138,12 +148,12 @@ export function AgentSquadPreview({
     <div className="relative max-w-full">
       <div className="relative">
           {/* Header copy */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <div className="grid gap-1 text-center sm:text-left">
-              <div className="text-lg sm:text-xl lg:text-2xl font-semibold text-foreground">
+              <div className="text-base sm:text-lg lg:text-xl font-semibold text-foreground">
                 {isMulti ? "Your agent squad is ready to deploy" : "Assemble your agent squad"}
               </div>
-              <div className="text-xs sm:text-sm lg:text-base text-muted-foreground">
+              <div className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground">
                 {isMulti
                   ? "Master + secondary models coordinate with debate and converge to a final insight."
                   : "Add up to 2 more models to unlock multi‑model runs, enhanced thinking, and debate."}
@@ -152,16 +162,16 @@ export function AgentSquadPreview({
           </div>
 
           {/* Hero layout */}
-          <div ref={containerRef} className="relative mt-6 sm:mt-10 lg:mt-12">
+          <div ref={containerRef} className="relative mt-4 sm:mt-6 lg:mt-8">
             {/* Top row: all model nodes horizontally aligned */}
-            <div className="relative z-10 flex items-stretch justify-center gap-1 sm:gap-3 md:gap-5 lg:gap-8 xl:gap-10 flex-nowrap px-1 sm:px-2 md:px-0">
+            <div className="relative z-10 flex items-stretch justify-center gap-1 sm:gap-2 md:gap-3 lg:gap-5 xl:gap-6 flex-nowrap px-1 sm:px-2 md:px-0">
               {/* Master */}
               <div ref={masterRef} className="relative">
-                <div className={`surface-input rounded-lg border ${isMulti ? 'border-primary/70' : 'border-primary/40'} h-12 sm:h-14 md:h-16 lg:h-20 px-2 sm:px-3 md:px-4 min-w-[100px] sm:min-w-[140px] md:min-w-[168px] lg:min-w-[200px] flex items-center gap-1 sm:gap-3`}>
+                <div className={`surface-input rounded-lg border ${isMulti ? 'border-primary/70' : 'border-primary/40'} h-10 sm:h-12 md:h-14 lg:h-16 px-2 sm:px-3 md:px-3 min-w-[92px] sm:min-w-[120px] md:min-w-[148px] lg:min-w-[180px] flex items-center gap-1 sm:gap-2`}>
                   <span className="shrink-0">{renderLogo(models.master, masterInfo?.provider)}</span>
                   <div className="min-w-0">
-                    <div className="text-xs sm:text-sm lg:text-base font-medium truncate">{masterInfo?.displayName || models.master}</div>
-                    <div className="hidden sm:block text-[11px] sm:text-xs lg:text-sm text-muted-foreground">Master</div>
+                    <div className="text-[11px] sm:text-xs lg:text-sm font-medium truncate">{masterInfo?.displayName || models.master}</div>
+                    <div className="hidden sm:block text-[10px] sm:text-[11px] lg:text-xs text-muted-foreground">Master</div>
                   </div>
                 </div>
                 {/* Bottom anchor for beam connection */}
@@ -176,11 +186,11 @@ export function AgentSquadPreview({
                   const info = getModelInfo(id);
                   return (
                     <div key={`secondary-slot-${slotIndex}`} ref={ref} className="relative">
-                      <div className="surface-input rounded-lg border border-border h-12 sm:h-14 md:h-16 lg:h-20 px-2 sm:px-3 md:px-4 min-w-[100px] sm:min-w-[140px] md:min-w-[168px] lg:min-w-[200px] flex items-center gap-1 sm:gap-3">
+                      <div className="surface-input rounded-lg border border-border h-10 sm:h-12 md:h-14 lg:h-16 px-2 sm:px-3 md:px-3 min-w-[92px] sm:min-w-[120px] md:min-w-[148px] lg:min-w-[180px] flex items-center gap-1 sm:gap-2">
                         <span className="shrink-0">{renderLogo(id, info?.provider)}</span>
                         <div className="min-w-0">
-                          <div className="text-xs sm:text-sm lg:text-base font-medium truncate">{info?.displayName || id}</div>
-                          <div className="hidden sm:block text-[11px] sm:text-xs lg:text-sm text-muted-foreground">Secondary</div>
+                          <div className="text-[11px] sm:text-xs lg:text-sm font-medium truncate">{info?.displayName || id}</div>
+                          <div className="hidden sm:block text-[10px] sm:text-[11px] lg:text-xs text-muted-foreground">Secondary</div>
                         </div>
                       </div>
                       {/* Bottom anchor for beam connection */}
@@ -193,13 +203,13 @@ export function AgentSquadPreview({
                     <button
                       type="button"
                       onClick={openModelPicker}
-                      className="surface-input rounded-lg border border-dashed border-primary/45 bg-card h-12 sm:h-14 md:h-16 lg:h-20 px-2 sm:px-3 md:px-4 min-w-[100px] sm:min-w-[140px] md:min-w-[168px] lg:min-w-[200px] flex items-center gap-1 sm:gap-3 text-left text-muted-foreground cursor-pointer"
+                      className="surface-input rounded-lg border border-dashed border-primary/45 bg-card h-10 sm:h-12 md:h-14 lg:h-16 px-2 sm:px-3 md:px-3 min-w-[92px] sm:min-w-[120px] md:min-w-[148px] lg:min-w-[180px] flex items-center gap-1 sm:gap-2 text-left text-muted-foreground cursor-pointer"
                       aria-label="Add Secondary"
                     >
-                      <Plus className="h-6 w-6 sm:h-8 sm:w-8 lg:h-9 lg:w-9 text-muted-foreground/70" />
+                      <Plus className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-muted-foreground/70" />
                       <div className="min-w-0">
-                        <div className="text-xs sm:text-sm lg:text-base font-medium truncate">Add Secondary</div>
-                        <div className="hidden sm:block text-[11px] sm:text-xs lg:text-sm text-muted-foreground">Optional</div>
+                        <div className="text-[11px] sm:text-xs lg:text-sm font-medium truncate">Add Secondary</div>
+                        <div className="hidden sm:block text-[10px] sm:text-[11px] lg:text-xs text-muted-foreground">Optional</div>
                       </div>
                     </button>
                     {/* Bottom anchor for beam connection */}
@@ -210,17 +220,17 @@ export function AgentSquadPreview({
             </div>
 
             {/* Middle: Research & Debate node (desktop/tablet only) */}
-            <div className="hidden sm:flex relative z-10 mt-16 lg:mt-16 xl:mt-18 justify-center">
+            <div className="hidden sm:flex relative z-10 mt-10 lg:mt-12 xl:mt-14 justify-center">
               <div ref={researchRef} className="relative">
                 {/* Decorative gradient glow to draw attention */}
-                <div aria-hidden className="pointer-events-none absolute inset-x-0 sm:-left-12 sm:-right-12 -top-12 h-24 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 sm:-left-12 sm:-right-12 -top-12 h-20 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
 
-                <div className="section-card px-3 sm:px-4 md:px-6 py-4 sm:py-5 md:py-6 text-center mx-2 sm:mx-0">
-                  <div className="flex items-center justify-center gap-2 text-primary font-semibold text-sm sm:text-base tracking-tight">
+                <div className="section-card px-3 sm:px-3 md:px-4 py-3 sm:py-4 md:py-5 text-center mx-2 sm:mx-0">
+                  <div className="flex items-center justify-center gap-2 text-primary font-semibold text-xs sm:text-sm tracking-tight">
                     <Lightbulb className="h-4 w-4" />
                     Individual Thoughts & Debate
                   </div>
-                  <div className="mt-1 text-center text-[11px] sm:text-sm text-muted-foreground max-w-[720px] mx-auto">
+                  <div className="mt-1 text-center text-[10px] sm:text-xs text-muted-foreground max-w-[640px] mx-auto">
                     Models develop individual thoughts through a research‑backed Socratic seminar and debate one another to improve answer quality.
                     <br />
                     <a 
@@ -243,13 +253,13 @@ export function AgentSquadPreview({
 
                   {/* Steps – desktop flow */}
                   <div className="hidden sm:flex items-center justify-center gap-2 mt-3">
-                    <span className="pill flex items-center gap-1.5 text-xs sm:text-[13px]"><Lightbulb className="h-3.5 w-3.5" /> Individual Thoughts</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px] sm:text-xs"><Lightbulb className="h-3.5 w-3.5" /> Individual Thoughts</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/70" aria-hidden />
-                    <span className="pill flex items-center gap-1.5 text-xs sm:text-[13px]"><MessageSquare className="h-3.5 w-3.5" /> Socratic seminar</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px] sm:text-xs"><MessageSquare className="h-3.5 w-3.5" /> Socratic seminar</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/70" aria-hidden />
-                    <span className="pill flex items-center gap-1.5 text-xs sm:text-[13px]"><GitBranch className="h-3.5 w-3.5" /> Counterpoints</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px] sm:text-xs"><GitBranch className="h-3.5 w-3.5" /> Counterpoints</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/70" aria-hidden />
-                    <span className="pill flex items-center gap-1.5 text-xs sm:text-[13px]"><Target className="h-3.5 w-3.5" /> Convergence</span>
+                    <span className="pill flex items-center gap-1.5 text-[11px] sm:text-xs"><Target className="h-3.5 w-3.5" /> Convergence</span>
                   </div>
                 </div>
                 {/* Anchors for beam connections */}
@@ -259,12 +269,12 @@ export function AgentSquadPreview({
             </div>
             
             {/* Mobile: Combined Research/Debate + Final insight */}
-            <div className="sm:hidden relative z-10 mt-12 flex justify-center">
+            <div className="sm:hidden relative z-10 mt-8 flex justify-center">
               <div ref={combinedRef} className="relative">
                 {/* Decorative gradient glow to draw attention */}
-                <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-10 h-20 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
-                <div className="section-card px-3 py-4">
-                  <div className="flex items-center justify-center gap-2 text-primary font-semibold text-sm tracking-tight">
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-10 h-16 bg-gradient-to-b from-primary/20 via-primary/8 to-transparent opacity-60 blur-2xl rounded-full" />
+                <div className="section-card px-3 py-3">
+                  <div className="flex items-center justify-center gap-2 text-primary font-semibold text-xs tracking-tight">
                     <Lightbulb className="h-4 w-4" />
                     Individual Thoughts & Debate
                   </div>
@@ -308,11 +318,11 @@ export function AgentSquadPreview({
             </div>
 
             {/* Bottom: final nucleus centered under the row (desktop/tablet only) */}
-            <div className="hidden sm:flex relative z-10 mt-12 lg:mt-16 xl:mt-20 justify-center">
+            <div className="hidden sm:flex relative z-10 mt-8 lg:mt-10 xl:mt-12 justify-center">
               <div ref={finalRef} className="relative">
                 <div className="final-compact-card">
                   <div className="final-compact-title"><Users className="h-4 w-4 text-primary" /> Final insight</div>
-                  <div className="final-compact-body text-xs sm:text-sm text-muted-foreground">Coordinated result from your selected models.</div>
+                  <div className="final-compact-body text-[11px] sm:text-xs text-muted-foreground">Coordinated result from your selected models.</div>
                 </div>
                 {/* Top anchor for beam connection */}
                 <div ref={finalTopAnchorRef} className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1 h-0 w-0" />
@@ -329,17 +339,17 @@ export function AgentSquadPreview({
                   fromRef={masterBottomAnchorRef}
                   toRef={combinedTopAnchorRef}
                   curvature={2}
-                  pathOpacity={0.22}
-                  pathWidth={2}
+                  pathOpacity={0.2}
+                  pathWidth={1.5}
                   pathColor="hsl(var(--primary))"
                   gradientStartColor="#34d399"
                   gradientStopColor="#60a5fa"
                   duration={4.5}
                   delay={0.05}
                   showNodes
-                  nodeRadius={2}
+                  nodeRadius={1.5}
                   glow
-                  glowOpacity={0.28}
+                  glowOpacity={0.24}
                   revealProgress={reveal}
                 />
                 {[0,1].map((idx) => (
@@ -349,17 +359,17 @@ export function AgentSquadPreview({
                     fromRef={secondaryBottomAnchorRefs[idx]}
                     toRef={combinedTopAnchorRef}
                     curvature={2}
-                    pathOpacity={0.22}
-                    pathWidth={2}
+                    pathOpacity={0.2}
+                    pathWidth={1.5}
                     pathColor="hsl(var(--primary))"
                     gradientStartColor="#34d399"
                     gradientStopColor="#60a5fa"
                     duration={4.5}
                     delay={0.1 + idx * 0.05}
                     showNodes
-                    nodeRadius={2}
+                    nodeRadius={1.5}
                     glow
-                    glowOpacity={0.28}
+                    glowOpacity={0.24}
                     revealProgress={reveal}
                   />
                 ))}
@@ -373,17 +383,17 @@ export function AgentSquadPreview({
                   fromRef={masterBottomAnchorRef}
                   toRef={researchTopAnchorRef}
                   curvature={2}
-                  pathOpacity={0.22}
-                  pathWidth={2}
+                  pathOpacity={0.2}
+                  pathWidth={1.5}
                   pathColor="hsl(var(--primary))"
                   gradientStartColor="#34d399"
                   gradientStopColor="#60a5fa"
                   duration={4.5}
                   delay={0.05}
                   showNodes
-                  nodeRadius={2}
+                  nodeRadius={1.5}
                   glow
-                  glowOpacity={0.28}
+                  glowOpacity={0.24}
                   revealProgress={reveal}
                 />
                 {secondaries.map((_, idx) => (
@@ -393,17 +403,17 @@ export function AgentSquadPreview({
                     fromRef={secondaryBottomAnchorRefs[idx]}
                     toRef={researchTopAnchorRef}
                     curvature={2}
-                    pathOpacity={0.22}
-                    pathWidth={2}
+                    pathOpacity={0.2}
+                    pathWidth={1.5}
                     pathColor="hsl(var(--primary))"
                     gradientStartColor="#34d399"
                     gradientStopColor="#60a5fa"
                     duration={4.5}
                     delay={0.1 + idx * 0.05}
                     showNodes
-                    nodeRadius={2}
+                    nodeRadius={1.5}
                     glow
-                    glowOpacity={0.28}
+                    glowOpacity={0.24}
                     revealProgress={reveal}
                   />
                 ))}
@@ -413,17 +423,17 @@ export function AgentSquadPreview({
                   fromRef={researchBottomAnchorRef}
                   toRef={finalTopAnchorRef}
                   curvature={2}
-                  pathOpacity={0.25}
-                  pathWidth={2.5}
+                  pathOpacity={0.22}
+                  pathWidth={2}
                   pathColor="hsl(var(--primary))"
                   gradientStartColor="#34d399"
                   gradientStopColor="#60a5fa"
                   duration={4.5}
                   delay={0.15}
                   showNodes
-                  nodeRadius={2}
+                  nodeRadius={1.5}
                   glow
-                  glowOpacity={0.3}
+                  glowOpacity={0.26}
                   revealProgress={reveal}
                 />
               </div>

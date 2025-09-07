@@ -198,7 +198,7 @@ export default function HomeChatPage() {
     } catch {}
   }, []);
 
-  const onStart = async (e?: React.FormEvent) => {
+  const onStart = React.useCallback(async (e?: React.FormEvent) => {
     e?.preventDefault();
     const content = input.trim();
     if (!content || isCreating) return;
@@ -297,10 +297,31 @@ export default function HomeChatPage() {
       setInput("");
       setFiles(null);
     }
-  };
+  }, [
+    input,
+    isCreating,
+    isAuthenticated,
+    selfStatus?.canSend,
+    files,
+    selectedModel,
+    multiModelSelection,
+    createThread,
+    startMultiModelGeneration,
+    sendMessageMutation,
+    ensureUploadTask,
+    router,
+    setAuthOpen,
+    setIsCreating,
+    setInput,
+    setFiles,
+  ]);
+
+  const onStartRef = React.useRef(onStart);
+  React.useEffect(() => {
+    onStartRef.current = onStart;
+  }, [onStart]);
 
   // Resume pre-auth draft after sign-in
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     try {
       if (!isAuthenticated) return;
@@ -314,7 +335,8 @@ export default function HomeChatPage() {
       window.sessionStorage.removeItem("preAuthDraft");
       // Auto-send after resume
       setTimeout(() => {
-        void onStart();
+        const f = onStartRef.current;
+        if (f) void f();
       }, 50);
     } catch {}
   }, [isAuthenticated, input]);
@@ -326,7 +348,7 @@ export default function HomeChatPage() {
         <div className="flex-1 overflow-auto flex items-center justify-center">
           <div className="w-full max-w-5xl sm:max-w-5xl lg:max-w-5xl px-4 sm:px-6 lg:px-8">
             <div className="space-y-6">
-              <div className="lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2">
+              <div className="max-h-[60vh] overflow-y-auto pr-1 lg:max-h-[58vh] lg:pr-2">
                 <AgentSquadPreview
                   models={multiModelSelection.secondary.length > 0 ? multiModelSelection : { master: selectedModel, secondary: [] }}
                   availableModels={availableModels || []}
