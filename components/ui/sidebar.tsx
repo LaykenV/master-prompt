@@ -698,7 +698,7 @@ function SidebarMenuSubButton({
   )
 }
 
-function useLoadingTimeout(loading: boolean, timeoutMs: number = 150000) {
+function useLoadingTimeout(loading: boolean, timeoutMs: number = 350000) {
   const [timedOut, setTimedOut] = React.useState(false)
 
   React.useEffect(() => {

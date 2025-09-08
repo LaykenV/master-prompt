@@ -350,7 +350,7 @@ function ThreadItem({
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     if (globalLoading) {
       setGlobalTimedOut(false);
-      timeoutId = setTimeout(() => setGlobalTimedOut(true), 150000);
+      timeoutId = setTimeout(() => setGlobalTimedOut(true), 350000);
     } else {
       setGlobalTimedOut(false);
     }

@@ -3,7 +3,7 @@ import { useThreadMessages, toUIMessages } from "@convex-dev/agent/react";
 import { useConvexAuth } from "convex/react";
 import { useMemo, useState, useEffect } from "react";
 
-const LOADING_TIMEOUT_MS = 150000;
+const LOADING_TIMEOUT_MS = 350000;
 
 /**
  * Hook to determine if a thread is currently generating/streaming messages
