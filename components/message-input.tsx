@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowUp, Paperclip, Square } from "lucide-react"
 
@@ -250,6 +250,23 @@ export function MessageInput({
     dependencies: [props.value, showFileList, bottomHeight],
   })
 
+  // Ensure caret line remains visible above the bottom bar when typing/pasting
+  useLayoutEffect(() => {
+    const el = textAreaRef.current
+    if (!el) return
+    // Defer until after layout so autosize height and measurements are final
+    const id = requestAnimationFrame(() => {
+      const node = textAreaRef.current
+      if (!node) return
+      const caretAtEnd =
+        node.selectionStart === props.value.length &&
+        node.selectionEnd === props.value.length
+      if (!caretAtEnd) return
+      node.scrollTop = node.scrollHeight
+    })
+    return () => cancelAnimationFrame(id)
+  }, [props.value, bottomHeight, showFileList])
+
   // Extract textarea props cleanly so we can merge styles (for dynamic padding)
   const textareaExtraProps: React.TextareaHTMLAttributes<HTMLTextAreaElement> =
     props.allowAttachments
@@ -277,7 +294,7 @@ export function MessageInput({
 
   return (
     <div
-      className="relative flex w-full"
+      className="relative flex w-full flex-col"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -291,31 +308,30 @@ export function MessageInput({
 
 
 
-      <div className="relative flex w-full items-center">
-        <div className="relative flex-1">
-          <textarea
+      <div className="w-full rounded-xl border border-input overflow-hidden surface-input">
+        <div className="relative flex w-full items-center">
+          <div className="relative flex-1">
+            <textarea
             aria-label="Write your prompt here"
             placeholder={placeholder}
             ref={textAreaRef}
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input p-3 text-base md:text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 surface-input",
+              "z-10 w-full grow resize-none rounded-none border-0 p-3 text-base md:text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
               // Right padding for icons, bottom padding is added dynamically via style
               "pr-3",
               className
             )}
             {...textareaExtraProps}
-            style={{ ...(textareaExtraProps.style || {}), paddingBottom: bottomHeight + 16 }}
           />
+          </div>
         </div>
-      </div>
 
-      {/* Unified floating bottom section: model picker, inline file previews, and actions */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30">
+        {/* Bottom section: model picker, inline file previews, and actions */}
         <div
           ref={bottomRef}
-          className="pointer-events-auto border-t surface-input px-2 py-2 sm:px-3 sm:py-2"
+          className="border-t px-2 py-2 sm:px-3 sm:py-2"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
         >
           <div className="flex items-center gap-2">
@@ -473,7 +489,6 @@ export function MessageInput({
           </div>
         </div>
       </div>
-
       {props.allowAttachments && <FileUploadOverlay isDragging={isDragging} />}
 
 
