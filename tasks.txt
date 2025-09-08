@@ -106,12 +106,15 @@ threads spinning if not active
 //copy on corner of md 
 //mobile side scroll
 
-add credit limit to apis
-openai
-claude
-gemini
-groq
-grok
+//add credit limit to apis
+//openai
+//claude
+//gemini
+//groq
+//grok
+
+sidebar open
+input auto scroll
 
 SVG comparison
 launch video

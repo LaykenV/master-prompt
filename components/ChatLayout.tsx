@@ -40,10 +40,13 @@ import { Toaster, toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useThreadLoadingState } from "@/hooks/use-thread-loading-state";
+
 export default function ChatLayout({
   children,
+  initialSidebarOpen,
 }: {
   children: ReactNode;
+  initialSidebarOpen?: boolean;
 }) {
   const pathname = usePathname();
   const { isAuthenticated } = useConvexAuth();
@@ -127,7 +130,7 @@ export default function ChatLayout({
   }, [threads, isAuthenticated]);
 
   return (
-    <SidebarProvider className="h-full">
+    <SidebarProvider className="h-full" defaultOpen={initialSidebarOpen}>
       <Toaster position="top-center" richColors />
       <Sidebar variant="inset" collapsible="icon" className="brand-sidebar">
         <SidebarHeader>

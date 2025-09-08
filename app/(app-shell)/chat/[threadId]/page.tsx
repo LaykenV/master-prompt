@@ -357,5 +357,3 @@ export default function ThreadPage() {
 }
 
 
-
-

@@ -12,7 +12,6 @@ import { useSelfStatus } from "@/hooks/use-self-status";
 import { AgentSquadPreview } from "@/components/AgentSquadPreview";
 import AuthDialog from "@/components/AuthDialog";
 import { useAuthGate } from "@/hooks/use-auth-gate";
-import ChatLayout from "@/app/chat/layout";
 
 export default function HomeChatPage() {
   const router = useRouter();
@@ -343,66 +342,58 @@ export default function HomeChatPage() {
 
 
   return (
-    <ChatLayout>
-      <div className="flex h-full flex-col relative">
-        <div className="flex-1 overflow-auto flex items-center justify-center">
-          <div className="w-full max-w-5xl sm:max-w-5xl lg:max-w-5xl px-4 sm:px-6 lg:px-8">
-            <div className="space-y-6">
-              <div className="max-h-[60vh] overflow-y-auto pr-1 lg:max-h-[58vh] lg:pr-2">
-                <AgentSquadPreview
-                  models={multiModelSelection.secondary.length > 0 ? multiModelSelection : { master: selectedModel, secondary: [] }}
-                  availableModels={availableModels || []}
-                  onChooseModels={scrollToInput}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Floating weekly limit banner (overlay, does not consume layout space) */}
-        {selfStatus?.isAuthenticated && selfStatus && !selfStatus.canSend && (
-          <div
-            className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-3"
-            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
-          >
-            <div className="pointer-events-auto w-full max-w-4xl">
-              <div className="rounded-lg border border-destructive/30 bg-destructive/10 backdrop-blur-md p-3 text-center shadow-md">
-                <p className="text-sm text-destructive">
-                  Weekly limit reached. {selfStatus.subscription ? (
-                    <Link href="/account/usage" className="underline font-medium">View Usage</Link>
-                  ) : (
-                    <Link href="/account/usage" className="underline font-medium text-destructive">
-                      Upgrade
-                    </Link>
-                  )} to continue.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="p-4">
-          <div className="mx-auto max-w-4xl">
-            <form id="new-chat-input-form" onSubmit={onStart} className="space-y-4">
-              <MessageInput
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Start a new chat..."
-                {...attachmentsProps}
-                isGenerating={isCreating}
-                disabled={selfStatus?.isAuthenticated ? !selfStatus.canSend : false}
-                className="min-h-[60px]"
-                modelPicker={{
-                  selectedModel,
-                  onModelChange: handleModelChange,
-                  onMultiModelChange: handleMultiModelChange,
-                }}
+    <div className="flex h-full flex-col relative">
+      <div className="flex-1 overflow-auto flex items-center justify-center">
+        <div className="w-full max-w-5xl sm:max-w-5xl lg:max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <div className="max-h-[60vh] overflow-y-auto pr-1 lg:max-h-[58vh] lg:pr-2">
+              <AgentSquadPreview
+                models={multiModelSelection.secondary.length > 0 ? multiModelSelection : { master: selectedModel, secondary: [] }}
+                availableModels={availableModels || []}
+                onChooseModels={scrollToInput}
               />
-            </form>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Floating weekly limit banner (overlay, does not consume layout space) */}
+      {selfStatus?.isAuthenticated && selfStatus && !selfStatus.canSend && (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-40 flex justify-center px-3"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+        >
+          <div className="pointer-events-auto w-full max-w-4xl">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 backdrop-blur-md p-3 text-center shadow-md">
+              <p className="text-sm text-destructive">
+                Weekly limit reached. <Link href="/account/usage" className="underline font-medium">View Usage</Link> to continue.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="p-4">
+        <div className="mx-auto max-w-4xl">
+          <form id="new-chat-input-form" onSubmit={onStart} className="space-y-4">
+            <MessageInput
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Start a new chat..."
+              {...attachmentsProps}
+              isGenerating={isCreating}
+              disabled={selfStatus?.isAuthenticated ? !selfStatus.canSend : false}
+              className="min-h-[60px]"
+              modelPicker={{
+                selectedModel,
+                onModelChange: handleModelChange,
+                onMultiModelChange: handleMultiModelChange,
+              }}
+            />
+          </form>
+        </div>
+      </div>
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    </ChatLayout>
+    </div>
   );
 }
 
