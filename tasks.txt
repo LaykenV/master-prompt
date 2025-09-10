@@ -113,11 +113,11 @@ threads spinning if not active
 //groq
 //grok
 
-sidebar open
-input auto scroll
+//sidebar open
+//input auto scroll
 
 SVG comparison
-launch video
+launch video - screenity
     based on peer reviewed research
     only place to leverage multiple models together
     best pricing

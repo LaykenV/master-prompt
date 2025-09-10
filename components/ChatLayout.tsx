@@ -147,7 +147,7 @@ export default function ChatLayout({
         </div>
           <Link 
             href="/"
-            className="btn-new-chat group-data-[collapsible=icon]:justify-center"
+            className="btn-new-chat flex items-center group-data-[collapsible=icon]:self-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:rounded-xl"
           >
             <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
             <span className="hidden group-data-[collapsible=icon]:block">+</span>
@@ -177,7 +177,7 @@ export default function ChatLayout({
                       </div>
                     )
                   ) : !threads || threads.length === 0 ? (
-                    <div className="text-sm text-muted-foreground px-2 py-4">
+                    <div className="text-sm text-muted-foreground px-2 py-4 group-data-[collapsible=icon]:hidden">
                       No chats yet
                     </div>
                   ) : (
@@ -228,10 +228,10 @@ export default function ChatLayout({
             ) : (
               <SidebarMenuItem>
                 <SidebarMenuButton 
-                  className="w-full justify-start gap-2 cursor-pointer p-0"
+                  className="w-full justify-start gap-2 cursor-pointer p-0 group-data-[collapsible=icon]:justify-center"
                   onClick={() => void signIn("google")}
                 >
-                  <span className="w-full inline-flex items-center gap-2 btn-oauth btn-oauth--google">
+                  <span className="w-full inline-flex items-center gap-2 btn-oauth btn-oauth--google group-data-[collapsible=icon]:w-auto group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center">
                     <span className="oauth-icon">
                       <svg viewBox="0 0 533.5 544.3" width="14" height="14" aria-hidden="true">
                         <path fill="#4285F4" d="M533.5 278.4c0-17.4-1.6-34.1-4.6-50.4H272.1v95.3h147.1c-6.3 34-25 62.7-53.4 82v68h86.2c50.3-46.3 81.5-114.6 81.5-194.9z"/>
