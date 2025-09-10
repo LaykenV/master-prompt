@@ -116,8 +116,9 @@ threads spinning if not active
 //sidebar open
 //input auto scroll
 
-SVG comparison
-launch video - screenity
+SVG comparison - animated pelican riding motorcycle
+fix for file summary?
+launch video - tella
     based on peer reviewed research
     only place to leverage multiple models together
     best pricing

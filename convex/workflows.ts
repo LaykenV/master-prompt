@@ -457,9 +457,20 @@ export const generateRunSummary = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, { masterThreadId, originalPrompt, initialResponses, refinedResponses }) => {
+    let summaryThreadId: string | null = null;
     try {
       const agent = summaryAgent;
-      const { thread } = await agent.continueThread(ctx, { threadId: masterThreadId });
+      // Use a fresh, ephemeral thread for summary generation to avoid
+      // inheriting any non-string content (e.g., file parts) from the master thread.
+      const { _id: createdSummaryThreadId } = await ctx.runMutation(
+        components.agent.threads.createThread,
+        {
+          title: "Multi-model run summary",
+          summary: "Ephemeral thread for run summarization",
+        },
+      );
+      summaryThreadId = createdSummaryThreadId;
+      const { thread } = await agent.continueThread(ctx, { threadId: summaryThreadId });
       const allowedIds = Array.from(new Set([
         ...initialResponses.map(({ modelId }) => modelId as string),
         ...refinedResponses.map(({ modelId }) => modelId as string),
@@ -528,6 +539,13 @@ export const generateRunSummary = internalAction({
     } catch (error) {
       console.error("Error generating run summary:", error);
       return null;
+    } finally {
+      // Best-effort cleanup of the ephemeral summary thread
+      if (summaryThreadId) {
+        try {
+          await summaryAgent.deleteThreadAsync(ctx, { threadId: summaryThreadId });
+        } catch {}
+      }
     }
   },
 });
