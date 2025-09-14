@@ -12,7 +12,6 @@ import { CheckCircle2, Loader2, AlertCircle, X, Brain } from "lucide-react";
 import { getModelLogo, getProviderLogo } from "@/convex/agent";
 import { ModelId } from "@/convex/agent";
 import { MessageBubble } from "./MessageBubble";
-import { AnimatedBeam } from "@/components/magicui/animated-beam";
  
 
 interface MultiResponseMessageProps {
@@ -34,14 +33,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
   const initialBottomAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
   const debateTopAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
   const debateBottomAnchorRefs = useRef<Record<string, RefObject<HTMLDivElement | null>>>({});
-  const finalTopAnchorRef = useRef<HTMLDivElement>(null);
   
-  // Animated beam reveal state
-  const revealTargetsRef = useRef<Record<string, number>>({});
-  const revealProgressRef = useRef<Record<string, number>>({});
-  const rafRef = useRef<number | null>(null);
-  const lastTsRef = useRef<number | null>(null);
-  const [, setRevealTick] = useState<number>(0);
 
   const ensureRunRef = (
     mapRef: MutableRefObject<Record<string, RefObject<HTMLDivElement | null>>>,
@@ -71,61 +63,7 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
     const src = mounted ? (isDark ? logo.dark : logo.light) : logo.dark;
     return (<img src={src} alt={logo.alt} className="h-6 w-6" />);
   };
-  // Build targets and tween revealProgress toward them
-  useEffect(() => {
-    const nextTargets: Record<string, number> = {};
-    if (multiModelRun) {
-      for (const from of multiModelRun.allRuns) {
-        for (const to of multiModelRun.allRuns) {
-          const k = `i:${from.threadId}->${to.threadId}`;
-          nextTargets[k] = from.status === "initial" ? 0 : 1;
-        }
-        const kf = `f:${from.threadId}`;
-        nextTargets[kf] = (from.status === "complete" || from.status === "error") ? 1 : 0;
-      }
-    }
-    revealTargetsRef.current = nextTargets;
-    // Ensure progress keys exist
-    for (const key in nextTargets) {
-      if (revealProgressRef.current[key] === undefined) {
-        revealProgressRef.current[key] = nextTargets[key] === 1 ? 1 : 0;
-      }
-    }
-    // Start tweener
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    lastTsRef.current = null;
-    const durationMs = 650; // total time to grow 0->1
-    const animate = (ts: number) => {
-      if (lastTsRef.current == null) lastTsRef.current = ts;
-      const dt = ts - lastTsRef.current;
-      lastTsRef.current = ts;
-      let anyChange = false;
-      const step = Math.max(0.001, dt / durationMs);
-      for (const key in revealTargetsRef.current) {
-        const target = revealTargetsRef.current[key];
-        const current = revealProgressRef.current[key] ?? 0;
-        const diff = target - current;
-        if (Math.abs(diff) > 0.002) {
-          const inc = Math.sign(diff) * Math.min(Math.abs(diff), step);
-          revealProgressRef.current[key] = current + inc;
-          anyChange = true;
-        } else {
-          revealProgressRef.current[key] = target;
-        }
-      }
-      if (anyChange) {
-        setRevealTick((t) => t + 1);
-        rafRef.current = requestAnimationFrame(animate);
-      } else {
-        rafRef.current = null;
-      }
-    };
-    rafRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    };
-  }, [multiModelRun]);
+  
 
   if (!multiModelRun) {
     return null;
@@ -227,7 +165,6 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                     </button>
                   </div>
                   <div className="relative">
-                    <div ref={finalTopAnchorRef} className="absolute left-1/2 -top-2 -translate-x-1/2 h-0 w-0" />
                     {finalCollapsed ? (
                       <FinalSummaryCompactCard structured={multiModelRun.runSummaryStructured} fallbackText="" debateComplete={debateComplete} onExpand={() => setFinalCollapsed(false)} />
                     ) : (
@@ -247,61 +184,6 @@ export function MultiResponseMessage({ masterMessageId }: MultiResponseMessagePr
                 renderLogo={renderLogo}
               />
             </>
-          )}
-
-          {/* Animated beams overlay (behind cards, hidden on mobile) */}
-          {!collapsedAll && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0 beams-overlay">
-              {multiModelRun.allRuns.flatMap((fromRun) =>
-                multiModelRun.allRuns.map((toRun) => (
-                  <AnimatedBeam
-                    key={`beam-init-${fromRun.threadId}-${toRun.threadId}`}
-                    containerRef={containerRef}
-                    fromRef={ensureRunRef(initialBottomAnchorRefs, fromRun.threadId)}
-                    toRef={ensureRunRef(debateTopAnchorRefs, toRun.threadId)}
-                    curvature={5}
-                    pathOpacity={0.18}
-                    pathWidth={2}
-                    pathColor="hsl(var(--primary))"
-                  gradientStartColor="#34d399"
-                  gradientStopColor="#60a5fa"
-                    duration={4.5}
-                    delay={0}
-                    showNodes
-                    nodeRadius={2.5}
-                    glow
-                    glowOpacity={0.25}
-                    revealProgress={revealProgressRef.current[`i:${fromRun.threadId}->${toRun.threadId}`] ?? 0}
-                  />
-                )),
-              )}
-            </div>
-          )}
-
-          {!collapsedAll && (
-            <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block z-0 beams-overlay">
-              {multiModelRun.allRuns.map((run) => (
-                <AnimatedBeam
-                  key={`beam-debate-${run.threadId}-final`}
-                  containerRef={containerRef}
-                  fromRef={ensureRunRef(debateBottomAnchorRefs, run.threadId)}
-                  toRef={finalTopAnchorRef}
-                  curvature={0}
-                  pathOpacity={0.22}
-                  pathWidth={2}
-                  pathColor="hsl(var(--primary))"
-                  gradientStartColor="#34d399"
-                  gradientStopColor="#60a5fa"
-                  duration={4.5}
-                  delay={0.1}
-                  showNodes
-                  nodeRadius={2.5}
-                  glow
-                  glowOpacity={0.28}
-                  revealProgress={revealProgressRef.current[`f:${run.threadId}`] ?? 0}
-                />
-              ))}
-            </div>
           )}
         </div>
       </CardContent>

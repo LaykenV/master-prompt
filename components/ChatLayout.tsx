@@ -92,11 +92,12 @@ export default function ChatLayout({
   const handleConfirmDelete = async () => {
     if (!confirmDelete) return;
     setIsDeleting(true);
+    const isDeletingActive = activeThreadId === confirmDelete.threadId;
     try {
-      await deleteThread({ threadId: confirmDelete.threadId });
-      if (activeThreadId === confirmDelete.threadId) {
-        router.push("/");
+      if (isDeletingActive) {
+        router.replace("/");
       }
+      await deleteThread({ threadId: confirmDelete.threadId });
       toast.success("Chat deleted");
       setConfirmDelete(null);
     } catch (error) {
@@ -145,13 +146,12 @@ export default function ChatLayout({
             Mesh Mind
           </span>
         </div>
-          <Link 
-            href="/"
+          <NewChatLink 
             className="btn-new-chat flex items-center group-data-[collapsible=icon]:self-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:rounded-xl"
           >
             <span className="group-data-[collapsible=icon]:hidden">New Chat</span>
             <span className="hidden group-data-[collapsible=icon]:block">+</span>
-          </Link>
+          </NewChatLink>
         </SidebarHeader>
         
         <SidebarContent className="flex-1 overflow-hidden">
@@ -256,12 +256,11 @@ export default function ChatLayout({
             <SidebarTrigger className="-ml-1" />
           </div>
           <div>
-            <Link 
-              href="/"
+            <NewChatLink 
               className="btn-new-chat w-10 h-10 p-0 flex items-center justify-center"
             >
               +
-            </Link>
+            </NewChatLink>
           </div>
         </header>
         
@@ -333,6 +332,21 @@ export default function ChatLayout({
   );
 }
 
+function NewChatLink({ className, children }: { className?: string; children: ReactNode }) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return (
+    <Link
+      href="/"
+      className={className}
+      onClick={() => {
+        if (isMobile) setOpenMobile(false);
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function ThreadItem({ 
   thread, 
   isActive, 
@@ -395,8 +409,11 @@ function ThreadItem({
         </SidebarMenuAction>
       ) : (
         <SidebarMenuAction 
-          onClick={onDelete}
-          className="opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+          onClick={() => {
+            if (isMobile) setOpenMobile(false);
+            onDelete();
+          }}
+          className="opacity-100 md:opacity-0 group-hover/menu-item:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
           aria-label={`Delete chat: ${displayName}`}
         >
           <X className="h-3 w-3" />
